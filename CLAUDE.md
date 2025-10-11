@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AI Mentor is a modular, scalable educational platform for computer science students. It uses an agentic RAG (Retrieval-Augmented Generation) system powered by a local LLM to provide intelligent tutoring. The system runs on a remote GPU instance (Runpod) with 24GB VRAM.
+AI Mentor is a modular, scalable educational platform for computer science students. It uses an agentic RAG (Retrieval-Augmented Generation) system powered by a local LLM to provide intelligent tutoring. The system runs on a remote Runpod GPU instance with RTX A5000 (24GB VRAM).
+
+**Hardware Environment:**
+- GPU: NVIDIA RTX A5000 (24GB VRAM)
+- Container: runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404
+- CUDA: 12.8.1
+- PyTorch: 2.8.0
+- OS: Ubuntu 24.04
 
 **Key Technologies:**
 - Backend: FastAPI + Python (llama.cpp, LlamaIndex, LangGraph, Milvus, PyMuPDF)
@@ -27,10 +34,11 @@ The system implements a self-correcting, stateful agent that goes beyond simple 
 This cyclical architecture (retrieve → grade → rewrite → retrieve → generate) enables the AI to self-correct when initial retrieval fails.
 
 **Deployment Architecture:**
-- All compute-intensive operations (LLM inference, embeddings, database) run on remote Runpod GPU instance
-- Local machine serves as thin development client
+- All compute-intensive operations (LLM inference, embeddings, database) run on Runpod RTX A5000 instance
+- Base container: runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404 (CUDA 12.8.1, PyTorch 2.8.0, Ubuntu 24.04)
+- Local machine serves as thin development client (VS Code Remote-SSH)
 - llama.cpp runs as standalone OpenAI-compatible API server (decoupled from FastAPI)
-- Milvus, etcd, and MinIO run in Docker containers
+- Milvus, etcd, and MinIO run in Docker containers on Runpod instance
 
 ### Backend Structure
 
@@ -195,17 +203,24 @@ The system ingests educational materials (PDFs) through a structured pipeline:
 **Model Selection Criteria:**
 - 7B parameter instruction-tuned model (Mistral-7B-Instruct-v0.2 or Llama-3)
 - Q5_K_M quantization (balance of quality and size)
-- Fits in 24GB VRAM with all layers on GPU
+- Fits in RTX A5000 24GB VRAM with all layers on GPU
 
 **llama.cpp Server Parameters:**
-- `--n_gpu_layers -1`: Offload all layers to GPU
+- `--n_gpu_layers -1`: Offload all layers to GPU (RTX A5000 supports full offload for 7B models)
 - `--n_ctx 4096`: Context window size
 - `--host 0.0.0.0 --port 8080`: Network accessibility
 - `--chat_format mistral-instruct`: Template for instruction format
 
+**RTX A5000 Specifications:**
+- 24GB GDDR6 VRAM
+- 8192 CUDA cores
+- Ampere architecture (compute capability 8.6)
+- Supports full GPU offloading for models up to ~13B parameters (with quantization)
+
 **Constraints:**
 - GPU memory ceiling: 24GB VRAM limits model size and context window
 - Larger models (13B+) or extended contexts require careful memory management
+- RTX A5000 recommended models: 7B Q5/Q6, 13B Q4/Q5, or 34B Q3/Q4 (latter may have reduced context)
 
 ## Key Architectural Decisions
 

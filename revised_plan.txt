@@ -1,0 +1,1449 @@
+REVISED PROJECT PLAN: AI Mentor for Computer Science Education
+A Pragmatic, Phased Approach with Risk Mitigation
+
+============================================================================
+EXECUTIVE SUMMARY
+============================================================================
+
+This revised plan addresses critical issues in the original 7-week plan:
+- Extends timeline to 10 weeks with explicit buffer periods
+- Adopts phased delivery: Simple MVP → Enhanced Features → Polish
+- Reduces initial complexity while preserving architectural goals
+- Adds concrete verification steps and error handling
+- Provides realistic time estimates based on solo developer capacity
+
+TIMELINE: 10 weeks (vs. original 7 weeks)
+APPROACH: Three phases with working deliverables after each phase
+RISK LEVEL: Medium (vs. High in original plan)
+
+============================================================================
+PHASE 1: SIMPLE RAG MVP (Weeks 1-4)
+============================================================================
+Goal: Deliver a working question-answering system with basic RAG
+Success Criteria: User can ask questions and receive contextually grounded answers
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 1: ENVIRONMENT SETUP & VERIFICATION
+────────────────────────────────────────────────────────────────────────────
+
+Day 1-2: System Preparation
+───────────────────────────
+□ Pre-work (do BEFORE Week 1):
+  - Create Runpod account and verify payment method
+  - Download Mistral-7B-Instruct-v0.2 Q5_K_M model (4.4GB) to local machine
+  - Prepare 3-5 sample CS textbook PDFs (10-50 pages each)
+  - Install VS Code with Remote-SSH extension on local laptop
+
+□ Runpod instance setup:
+  - Provision RTX A5000 24GB GPU instance
+  - Use runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404 base image
+    * CUDA 12.8.1
+    * PyTorch 2.8.0
+    * Ubuntu 24.04
+    * Python 3.12 pre-installed
+  - Configure SSH access and test connection from local machine
+  - Verify GPU access:
+
+    nvidia-smi
+    # Should show: RTX A5000, 24GB VRAM, CUDA 12.8
+
+  - Install system packages:
+
+    sudo apt-get update && sudo apt-get install -y \
+      python3-venv python3-pip python3-dev \
+      nodejs npm git build-essential cmake \
+      curl wget htop tmux
+
+  - Note: Python 3.12 is already installed in the base image
+
+Day 3: Project Structure & Git
+───────────────────────────────
+□ Create project structure:
+
+  cd ~ && mkdir ai-mentor-project && cd ai-mentor-project
+  git init
+  mkdir -p backend frontend models course_materials logs
+
+□ Create .gitignore (use comprehensive version covering Python, Node.js, models)
+
+□ Upload model file to Runpod:
+
+  # From local machine
+  scp mistral-7b-instruct-v0.2.q5_k_m.gguf runpod:~/ai-mentor-project/models/
+
+□ Upload sample PDFs to course_materials/
+
+□ Initial commit and push to GitHub
+
+Day 4-5: Backend Environment Setup
+───────────────────────────────────
+□ Create Python virtual environment:
+
+  cd backend
+  python3 -m venv venv
+  source venv/bin/activate
+
+□ Install Phase 1 dependencies (simplified stack):
+
+  pip install --upgrade pip
+  pip install \
+    "fastapi[all]" \
+    "uvicorn[standard]" \
+    "python-dotenv" \
+    "llama-index" \
+    "llama-cpp-python[server]" \
+    "PyMuPDF" \
+    "sentence-transformers" \
+    "chromadb"
+
+  # Save dependencies
+  pip freeze > requirements.txt
+
+□ Create backend structure:
+
+  mkdir -p app/api app/core app/services
+  touch app/__init__.py app/api/__init__.py app/core/__init__.py app/services/__init__.py
+  touch main.py
+
+□ Implement minimal FastAPI app in main.py:
+
+  from fastapi import FastAPI
+  from fastapi.middleware.cors import CORSMiddleware
+
+  app = FastAPI(title="AI Mentor API")
+
+  app.add_middleware(
+      CORSMiddleware,
+      allow_origins=["http://localhost:5173"],
+      allow_credentials=True,
+      allow_methods=["*"],
+      allow_headers=["*"],
+  )
+
+  @app.get("/")
+  def health_check():
+      return {"status": "ok", "message": "AI Mentor API is running"}
+
+  @app.get("/api/health")
+  def detailed_health():
+      return {
+          "status": "ok",
+          "services": {
+              "api": "running",
+              "llm": "not_configured",
+              "vector_db": "not_configured"
+          }
+      }
+
+□ Test FastAPI server:
+
+  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  # In another terminal:
+  curl http://localhost:8000/
+  curl http://localhost:8000/api/health
+
+Day 6: LLM Server Setup & Verification
+───────────────────────────────────────
+□ Create start_llm.sh script:
+
+  #!/bin/bash
+  # start_llm.sh - Launch llama.cpp server on RTX A5000
+
+  MODEL_PATH="./models/mistral-7b-instruct-v0.2.q5_k_m.gguf"
+
+  if [ ! -f "$MODEL_PATH" ]; then
+      echo "Error: Model file not found at $MODEL_PATH"
+      exit 1
+  fi
+
+  echo "Starting llama.cpp server on RTX A5000..."
+  echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader)"
+  echo "VRAM: $(nvidia-smi --query-gpu=memory.total --format=csv,noheader)"
+
+  python3 -m llama_cpp.server \
+    --model "$MODEL_PATH" \
+    --n_gpu_layers -1 \
+    --n_ctx 4096 \
+    --host 0.0.0.0 \
+    --port 8080 \
+    --chat_format mistral-instruct \
+    --verbose \
+    2>&1 | tee logs/llm_server.log
+
+  # Note: RTX A5000 with 24GB VRAM can handle full GPU offload of 7B Q5_K_M
+  # Expected VRAM usage: ~6-7GB for model + 2-3GB for 4096 context
+  # Leaves plenty of headroom for concurrent requests
+
+□ Make script executable and run:
+
+  chmod +x start_llm.sh
+  tmux new -s llm
+  ./start_llm.sh
+  # Detach with Ctrl+B, D
+
+□ Verify LLM server (takes 2-3 minutes to load):
+
+  # Check server is responding
+  curl http://localhost:8080/v1/models
+
+  # Test completion endpoint
+  curl http://localhost:8080/v1/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+      "prompt": "What is Python?",
+      "max_tokens": 50,
+      "temperature": 0.7
+    }'
+
+  # Test chat endpoint
+  curl http://localhost:8080/v1/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+      "messages": [{"role": "user", "content": "What is a variable?"}],
+      "max_tokens": 100
+    }'
+
+□ Document expected response times in logs/
+
+Day 7: Buffer & Documentation
+──────────────────────────────
+□ Create backend/README.md with:
+  - Setup instructions
+  - How to start services
+  - Verification commands
+  - Troubleshooting common issues
+
+□ Test full environment restart (shutdown everything, restart, verify)
+
+□ Git commit: "Week 1 complete: Environment setup and verification"
+
+WEEK 1 DELIVERABLE: ✓ Working FastAPI server + LLM inference server + verified connectivity
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 2: SIMPLE RAG PIPELINE (Backend Core)
+────────────────────────────────────────────────────────────────────────────
+
+Day 1-2: Data Ingestion Script
+───────────────────────────────
+□ Create backend/ingest.py:
+
+from llama_index.core import (
+    VectorStoreIndex,
+    SimpleDirectoryReader,
+    StorageContext,
+    Settings
+)
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core.node_parser import SentenceSplitter
+import chromadb
+import argparse
+import logging
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--directory", default="./course_materials",
+                       help="Directory containing PDF files")
+    parser.add_argument("--collection", default="cs_knowledge_base",
+                       help="ChromaDB collection name")
+    args = parser.parse_args()
+
+    # Verify directory exists
+    data_dir = Path(args.directory)
+    if not data_dir.exists():
+        logger.error(f"Directory not found: {data_dir}")
+        return
+
+    pdf_files = list(data_dir.glob("*.pdf"))
+    if not pdf_files:
+        logger.error(f"No PDF files found in {data_dir}")
+        return
+
+    logger.info(f"Found {len(pdf_files)} PDF files to process")
+
+    # Configure embedding model (local, fast)
+    embed_model = HuggingFaceEmbedding(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+    Settings.embed_model = embed_model
+
+    # Configure text splitter
+    text_splitter = SentenceSplitter(
+        chunk_size=512,
+        chunk_overlap=50
+    )
+    Settings.text_splitter = text_splitter
+
+    # Initialize ChromaDB
+    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    chroma_collection = chroma_client.get_or_create_collection(args.collection)
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+    # Load and process documents
+    logger.info("Loading documents...")
+    documents = []
+    for pdf_file in pdf_files:
+        try:
+            logger.info(f"Processing: {pdf_file.name}")
+            docs = SimpleDirectoryReader(
+                input_files=[str(pdf_file)]
+            ).load_data()
+            documents.extend(docs)
+            logger.info(f"  ✓ Loaded {len(docs)} document(s)")
+        except Exception as e:
+            logger.error(f"  ✗ Failed to process {pdf_file.name}: {e}")
+            continue
+
+    if not documents:
+        logger.error("No documents successfully loaded")
+        return
+
+    logger.info(f"Total documents loaded: {len(documents)}")
+    logger.info("Creating vector index (this may take several minutes)...")
+
+    # Create index
+    try:
+        index = VectorStoreIndex.from_documents(
+            documents,
+            storage_context=storage_context,
+            show_progress=True
+        )
+        logger.info("✓ Vector index created successfully")
+        logger.info(f"  Collection: {args.collection}")
+        logger.info(f"  Storage: ./chroma_db")
+    except Exception as e:
+        logger.error(f"Failed to create index: {e}")
+        return
+
+if __name__ == "__main__":
+    main()
+
+□ Test ingestion pipeline:
+
+  cd backend
+  source venv/bin/activate
+  python ingest.py --directory ../course_materials
+
+  # Verify ChromaDB was created
+  ls -lh chroma_db/
+
+□ Add chroma_db/ to .gitignore
+
+Day 3-4: Query Engine Service
+──────────────────────────────
+□ Create app/services/rag_service.py:
+
+from llama_index.core import VectorStoreIndex, StorageContext, Settings
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.openai_like import OpenAILike
+import chromadb
+import logging
+
+logger = logging.getLogger(__name__)
+
+class RAGService:
+    def __init__(self):
+        self.index = None
+        self.query_engine = None
+        self._initialize()
+
+    def _initialize(self):
+        """Initialize embedding model, vector store, and query engine"""
+        try:
+            # Configure embedding model
+            embed_model = HuggingFaceEmbedding(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+            Settings.embed_model = embed_model
+
+            # Configure LLM (llama.cpp server)
+            llm = OpenAILike(
+                api_base="http://localhost:8080/v1",
+                api_key="not-needed",
+                model="mistral-7b-instruct",
+                temperature=0.7,
+                max_tokens=512
+            )
+            Settings.llm = llm
+
+            # Connect to ChromaDB
+            chroma_client = chromadb.PersistentClient(path="./chroma_db")
+            chroma_collection = chroma_client.get_collection("cs_knowledge_base")
+            vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+            # Create index from existing vector store
+            self.index = VectorStoreIndex.from_vector_store(vector_store)
+
+            # Create query engine with custom prompt
+            self.query_engine = self.index.as_query_engine(
+                similarity_top_k=3,
+                response_mode="compact"
+            )
+
+            logger.info("RAG service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize RAG service: {e}")
+            raise
+
+    def query(self, question: str) -> dict:
+        """Query the RAG system"""
+        if not self.query_engine:
+            raise RuntimeError("RAG service not initialized")
+
+        try:
+            response = self.query_engine.query(question)
+
+            # Extract source information
+            sources = []
+            if hasattr(response, 'source_nodes'):
+                for node in response.source_nodes:
+                    sources.append({
+                        "text": node.node.text[:200] + "...",
+                        "score": node.score,
+                        "metadata": node.node.metadata
+                    })
+
+            return {
+                "answer": str(response),
+                "sources": sources,
+                "question": question
+            }
+        except Exception as e:
+            logger.error(f"Query failed: {e}")
+            raise
+
+# Global instance
+_rag_service = None
+
+def get_rag_service() -> RAGService:
+    global _rag_service
+    if _rag_service is None:
+        _rag_service = RAGService()
+    return _rag_service
+
+□ Create Pydantic models in app/api/models.py:
+
+from pydantic import BaseModel
+from typing import List, Optional
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: Optional[str] = "default"
+
+class Source(BaseModel):
+    text: str
+    score: float
+    metadata: dict
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: List[Source]
+    question: str
+
+□ Create API endpoint in app/api/chat.py:
+
+from fastapi import APIRouter, HTTPException
+from app.api.models import ChatRequest, ChatResponse
+from app.services.rag_service import get_rag_service
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api", tags=["chat"])
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """Handle chat requests using RAG"""
+    try:
+        rag_service = get_rag_service()
+        result = rag_service.query(request.message)
+        return ChatResponse(**result)
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+□ Update main.py to include router:
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.chat import router as chat_router
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+app = FastAPI(title="AI Mentor API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(chat_router)
+
+@app.get("/")
+def health_check():
+    return {"status": "ok", "message": "AI Mentor API is running"}
+
+Day 5: Testing & Verification
+──────────────────────────────
+□ Start all services:
+
+  # Terminal 1: LLM server
+  tmux attach -t llm
+
+  # Terminal 2: FastAPI
+  cd backend
+  source venv/bin/activate
+  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+□ Test chat endpoint:
+
+  curl -X POST http://localhost:8000/api/chat \
+    -H "Content-Type: application/json" \
+    -d '{
+      "message": "What is a variable in Python?",
+      "conversation_id": "test-001"
+    }' | jq
+
+□ Test with multiple questions and verify:
+  - Responses are contextually relevant
+  - Sources are returned
+  - Response time < 10 seconds
+
+□ Document performance metrics in logs/week2_metrics.txt
+
+Day 6-7: Error Handling & Robustness
+─────────────────────────────────────
+□ Add error handling to RAG service:
+  - Timeout handling (30s max per query)
+  - Fallback responses if LLM server is down
+  - Input validation (max question length)
+
+□ Add health check that verifies all dependencies:
+
+@app.get("/api/health")
+def detailed_health():
+    health = {
+        "status": "ok",
+        "services": {}
+    }
+
+    # Check LLM server
+    try:
+        import requests
+        resp = requests.get("http://localhost:8080/v1/models", timeout=5)
+        health["services"]["llm"] = "running" if resp.ok else "error"
+    except:
+        health["services"]["llm"] = "down"
+
+    # Check RAG service
+    try:
+        rag = get_rag_service()
+        health["services"]["rag"] = "running" if rag.query_engine else "error"
+    except:
+        health["services"]["rag"] = "not_initialized"
+
+    if any(v != "running" for v in health["services"].values()):
+        health["status"] = "degraded"
+
+    return health
+
+□ Git commit: "Week 2 complete: Simple RAG pipeline with query endpoint"
+
+WEEK 2 DELIVERABLE: ✓ Working RAG system that answers questions based on ingested documents
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 3: FRONTEND MVP (User Interface)
+────────────────────────────────────────────────────────────────────────────
+
+Day 1: SvelteKit Setup (Local Machine)
+───────────────────────────────────────
+□ Create Svelte project:
+
+  cd frontend
+  npm create svelte@latest .
+  # Choose: Skeleton project, TypeScript, ESLint, Prettier
+
+□ Install dependencies:
+
+  npm install
+
+□ Test dev server:
+
+  npm run dev
+  # Open http://localhost:5173
+
+□ Install additional dependencies:
+
+  npm install marked dompurify
+
+Day 2-3: Chat UI Components
+────────────────────────────
+□ Create src/lib/stores.ts:
+
+import { writable } from 'svelte/store';
+
+export interface Message {
+    role: 'user' | 'assistant';
+    content: string;
+    sources?: Array<{
+        text: string;
+        score: number;
+    }>;
+    timestamp: Date;
+}
+
+export const messages = writable<Message[]>([]);
+export const isLoading = writable(false);
+
+□ Create src/lib/api.ts:
+
+const API_BASE = 'http://localhost:8000';
+
+export interface ChatRequest {
+    message: string;
+    conversation_id?: string;
+}
+
+export interface ChatResponse {
+    answer: string;
+    sources: Array<{
+        text: string;
+        score: number;
+        metadata: Record<string, any>;
+    }>;
+    question: string;
+}
+
+export async function sendMessage(message: string): Promise<ChatResponse> {
+    const response = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message,
+            conversation_id: 'default'
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+    }
+
+    return response.json();
+}
+
+export async function checkHealth() {
+    const response = await fetch(`${API_BASE}/api/health`);
+    return response.json();
+}
+
+□ Create src/lib/components/Message.svelte:
+
+<script lang="ts">
+    import type { Message } from '../stores';
+    export let message: Message;
+
+    let showSources = false;
+</script>
+
+<div class="message" class:user={message.role === 'user'} class:assistant={message.role === 'assistant'}>
+    <div class="message-header">
+        <strong>{message.role === 'user' ? 'You' : 'AI Mentor'}</strong>
+        <span class="timestamp">{message.timestamp.toLocaleTimeString()}</span>
+    </div>
+    <div class="message-content">
+        {message.content}
+    </div>
+    {#if message.sources && message.sources.length > 0}
+        <button class="sources-toggle" on:click={() => showSources = !showSources}>
+            {showSources ? 'Hide' : 'Show'} sources ({message.sources.length})
+        </button>
+        {#if showSources}
+            <div class="sources">
+                {#each message.sources as source, i}
+                    <div class="source">
+                        <strong>Source {i + 1}</strong> (relevance: {(source.score * 100).toFixed(0)}%)
+                        <p>{source.text}</p>
+                    </div>
+                {/each}
+            </div>
+        {/if}
+    {/if}
+</div>
+
+<style>
+    .message {
+        margin: 1rem 0;
+        padding: 1rem;
+        border-radius: 8px;
+        max-width: 80%;
+    }
+
+    .message.user {
+        background: #e3f2fd;
+        margin-left: auto;
+    }
+
+    .message.assistant {
+        background: #f5f5f5;
+        margin-right: auto;
+    }
+
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .timestamp {
+        color: #666;
+        font-size: 0.8rem;
+    }
+
+    .message-content {
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .sources-toggle {
+        margin-top: 0.5rem;
+        background: none;
+        border: 1px solid #ccc;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .sources {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: white;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .source {
+        margin: 0.5rem 0;
+        padding: 0.5rem;
+        border-left: 3px solid #2196f3;
+        background: #f9f9f9;
+    }
+
+    .source p {
+        margin: 0.25rem 0 0 0;
+        color: #555;
+    }
+</style>
+
+□ Create src/lib/components/ChatInput.svelte:
+
+<script lang="ts">
+    import { createEventDispatcher } from 'svelte';
+
+    const dispatch = createEventDispatcher();
+
+    let inputValue = '';
+
+    function handleSubmit() {
+        if (inputValue.trim()) {
+            dispatch('send', inputValue);
+            inputValue = '';
+        }
+    }
+
+    function handleKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+        }
+    }
+</script>
+
+<div class="chat-input">
+    <textarea
+        bind:value={inputValue}
+        on:keydown={handleKeydown}
+        placeholder="Ask a question about computer science..."
+        rows="3"
+    />
+    <button on:click={handleSubmit} disabled={!inputValue.trim()}>
+        Send
+    </button>
+</div>
+
+<style>
+    .chat-input {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: white;
+        border-top: 1px solid #ddd;
+    }
+
+    textarea {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 1rem;
+        resize: none;
+    }
+
+    textarea:focus {
+        outline: none;
+        border-color: #2196f3;
+    }
+
+    button {
+        padding: 0.75rem 1.5rem;
+        background: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    button:hover:not(:disabled) {
+        background: #1976d2;
+    }
+
+    button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+</style>
+
+Day 4-5: Main Chat Page
+───────────────────────
+□ Update src/routes/+page.svelte:
+
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import { messages, isLoading } from '$lib/stores';
+    import Message from '$lib/components/Message.svelte';
+    import ChatInput from '$lib/components/ChatInput.svelte';
+    import { sendMessage, checkHealth } from '$lib/api';
+    import type { Message as MessageType } from '$lib/stores';
+
+    let messagesContainer: HTMLDivElement;
+    let healthStatus = { status: 'unknown', services: {} };
+
+    onMount(async () => {
+        // Check backend health
+        try {
+            healthStatus = await checkHealth();
+        } catch (e) {
+            console.error('Failed to check health:', e);
+        }
+
+        // Add welcome message
+        messages.update(m => [...m, {
+            role: 'assistant',
+            content: 'Hello! I\'m your AI Computer Science mentor. Ask me anything about programming, algorithms, data structures, and more!',
+            timestamp: new Date()
+        }]);
+    });
+
+    async function handleSend(event: CustomEvent<string>) {
+        const userMessage = event.detail;
+
+        // Add user message
+        messages.update(m => [...m, {
+            role: 'user',
+            content: userMessage,
+            timestamp: new Date()
+        }]);
+
+        // Scroll to bottom
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 100);
+
+        isLoading.set(true);
+
+        try {
+            const response = await sendMessage(userMessage);
+
+            // Add assistant response
+            messages.update(m => [...m, {
+                role: 'assistant',
+                content: response.answer,
+                sources: response.sources,
+                timestamp: new Date()
+            }]);
+
+            // Scroll to bottom
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 100);
+        } catch (error) {
+            console.error('Failed to send message:', error);
+
+            // Add error message
+            messages.update(m => [...m, {
+                role: 'assistant',
+                content: 'Sorry, I encountered an error. Please make sure the backend server is running and try again.',
+                timestamp: new Date()
+            }]);
+        } finally {
+            isLoading.set(false);
+        }
+    }
+</script>
+
+<div class="app">
+    <header>
+        <h1>AI Mentor - Computer Science</h1>
+        <div class="status">
+            {#if healthStatus.status === 'ok'}
+                <span class="status-dot online"></span> Online
+            {:else if healthStatus.status === 'degraded'}
+                <span class="status-dot degraded"></span> Degraded
+            {:else}
+                <span class="status-dot offline"></span> Checking...
+            {/if}
+        </div>
+    </header>
+
+    <div class="messages-container" bind:this={messagesContainer}>
+        {#each $messages as message}
+            <Message {message} />
+        {/each}
+
+        {#if $isLoading}
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Thinking...</span>
+            </div>
+        {/if}
+    </div>
+
+    <ChatInput on:send={handleSend} />
+</div>
+
+<style>
+    :global(body) {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    .app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        background: #2196f3;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .status-dot.online {
+        background: #4caf50;
+    }
+
+    .status-dot.degraded {
+        background: #ff9800;
+    }
+
+    .status-dot.offline {
+        background: #f44336;
+    }
+
+    .messages-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 2rem;
+        background: #fafafa;
+    }
+
+    .loading {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        color: #666;
+    }
+
+    .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #2196f3;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+Day 6: Integration Testing
+───────────────────────────
+□ Update frontend/.env (create if doesn't exist):
+
+  VITE_API_BASE=http://localhost:8000
+
+□ Test complete flow:
+  1. Start backend services (LLM + FastAPI)
+  2. Start frontend dev server
+  3. Open browser to http://localhost:5173
+  4. Send test questions
+  5. Verify responses and sources display correctly
+
+□ Test edge cases:
+  - Very long questions
+  - Empty messages (should be disabled)
+  - Backend down (should show error message)
+  - Multiple rapid messages
+
+Day 7: Documentation & Polish
+──────────────────────────────
+□ Create frontend/README.md with setup and development instructions
+
+□ Add basic error boundaries and user feedback
+
+□ Git commit: "Week 3 complete: Functional Svelte frontend with chat UI"
+
+WEEK 3 DELIVERABLE: ✓ Working web UI where users can chat with AI mentor
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 4: END-TO-END TESTING & MVP REFINEMENT
+────────────────────────────────────────────────────────────────────────────
+
+Day 1-2: System Integration Testing
+────────────────────────────────────
+□ Create testing checklist and document results
+
+□ Functional tests:
+  - Ask 10 diverse questions (factual, conceptual, code examples)
+  - Verify answers are grounded in source documents
+  - Check source attribution accuracy
+  - Test conversation flow (multiple questions)
+
+□ Performance tests:
+  - Measure end-to-end latency (user sends message → receives response)
+  - Test with 3-5 concurrent users (simulate with curl scripts)
+  - Monitor GPU memory usage
+  - Document response times in logs/performance_metrics.txt
+
+□ Reliability tests:
+  - Restart all services and verify recovery
+  - Test with malformed inputs
+  - Verify error handling
+
+Day 3-4: Prompt Engineering
+────────────────────────────
+□ Improve system prompt in RAG service:
+
+SYSTEM_PROMPT = """You are an expert Computer Science mentor helping students learn.
+
+Your role:
+- Explain concepts clearly and concisely
+- Provide examples when helpful
+- Break down complex topics into digestible parts
+- Encourage learning by asking follow-up questions
+- Always base your answers on the provided context
+
+Guidelines:
+- If the context doesn't contain relevant information, say so honestly
+- Cite which parts of the context you're using
+- Use analogies to make difficult concepts more accessible
+- Be encouraging and supportive in your tone
+"""
+
+□ Update query_engine configuration to use custom prompt
+
+□ Test with the same 10 questions and compare quality improvement
+
+Day 5: UI/UX Polish
+───────────────────
+□ Improve frontend aesthetics:
+  - Better spacing and typography
+  - Loading states and animations
+  - Error messages with helpful guidance
+  - Add "Copy" button for code snippets in responses
+
+□ Add keyboard shortcuts (Enter to send, Ctrl+K to clear, etc.)
+
+□ Responsive design testing (mobile, tablet, desktop)
+
+Day 6-7: Documentation & Demo Preparation
+──────────────────────────────────────────
+□ Create comprehensive README.md in project root:
+  - Project overview
+  - Architecture diagram (ASCII or include image)
+  - Setup instructions for both environments
+  - Usage guide
+  - Troubleshooting section
+  - Known limitations
+
+□ Create demo video or GIF showing:
+  - Asking a question
+  - Receiving answer with sources
+  - Expanding sources to see context
+
+□ Prepare 5 impressive demo questions that showcase system capabilities
+
+□ Git commit: "Week 4 complete: MVP with testing, refinement, and documentation"
+
+PHASE 1 COMPLETE: ✓ Working AI Mentor MVP with simple RAG
+
+────────────────────────────────────────────────────────────────────────────
+CHECKPOINT: Evaluate Phase 1 Success Before Proceeding
+────────────────────────────────────────────────────────────────────────────
+
+Before moving to Phase 2, verify:
+□ Can ingest PDFs and create vector index
+□ Can query the system and get relevant answers
+□ Answers are grounded in source documents
+□ Frontend connects to backend without issues
+□ Average response time < 15 seconds
+□ System can recover from service restarts
+
+If ANY of the above are failing, STOP and fix before Phase 2.
+
+============================================================================
+PHASE 2: ENHANCED FEATURES (Weeks 5-7)
+============================================================================
+Goal: Add advanced capabilities (agentic RAG, streaming, better vector DB)
+Success Criteria: Self-correcting RAG, real-time streaming responses, production-ready
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 5: AGENTIC RAG WITH LANGGRAPH
+────────────────────────────────────────────────────────────────────────────
+
+Day 1-2: LangGraph Setup & State Definition
+────────────────────────────────────────────
+□ Install LangGraph dependencies:
+
+  cd backend
+  source venv/bin/activate
+  pip install langgraph langchain langchain-core
+
+□ Create app/services/agent_graph.py:
+
+from typing import TypedDict, Annotated, List
+from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
+import logging
+
+logger = logging.getLogger(__name__)
+
+class AgentState(TypedDict):
+    """State for the agentic RAG workflow"""
+    question: str
+    documents: List[str]
+    generation: str
+    messages: Annotated[list, add_messages]
+    retry_count: int
+
+□ Study LangGraph documentation and examples:
+  - https://langchain-ai.github.io/langgraph/
+  - Focus on StateGraph, conditional edges, and node functions
+
+Day 3-4: Implement Agent Nodes
+───────────────────────────────
+□ Implement retrieve node (queries vector store)
+
+□ Implement grade_documents node (evaluates relevance)
+
+□ Implement rewrite_query node (reformulates question)
+
+□ Implement generate node (creates final answer)
+
+□ Note: This is the most complex part - expect debugging and iteration
+
+Day 5-6: Assemble and Test Agent Graph
+───────────────────────────────────────
+□ Create StateGraph with nodes
+
+□ Add conditional edges based on document grading
+
+□ Add loop prevention (max 2 retries on rewrite)
+
+□ Compile graph and test with various query types
+
+□ Compare agentic RAG vs simple RAG on 10 test questions
+
+Day 7: Integration & API Update
+────────────────────────────────
+□ Create new endpoint /api/chat-agentic
+
+□ Keep old /api/chat endpoint for comparison
+
+□ Update health check to include agentic status
+
+□ Git commit: "Week 5 complete: Agentic RAG with LangGraph"
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 6: STREAMING RESPONSES & MILVUS UPGRADE
+────────────────────────────────────────────────────────────────────────────
+
+Day 1-2: WebSocket Implementation
+──────────────────────────────────
+□ Implement WebSocket endpoint in FastAPI
+
+□ Stream tokens from LLM generation
+
+□ Handle connection lifecycle (connect, disconnect, errors)
+
+□ Test with wscat or Python websocket client
+
+Day 3-4: Frontend WebSocket Integration
+────────────────────────────────────────
+□ Create WebSocket service in frontend
+
+□ Update Message component to handle streaming tokens
+
+□ Add visual indicator for streaming
+
+□ Test real-time response rendering
+
+Day 5-6: Migrate to Milvus
+───────────────────────────
+□ Create docker-compose.yml for Milvus (etcd, MinIO, Milvus standalone)
+
+□ Update ingestion script to use Milvus instead of ChromaDB
+
+□ Re-ingest documents
+
+□ Update RAG service to connect to Milvus
+
+□ Verify performance improvement (if any)
+
+Day 7: Testing & Documentation
+───────────────────────────────
+□ End-to-end testing of streaming + agentic RAG
+
+□ Update documentation for new features
+
+□ Git commit: "Week 6 complete: WebSocket streaming and Milvus"
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 7: CONTAINERIZATION & DEPLOYMENT
+────────────────────────────────────────────────────────────────────────────
+
+Day 1-2: Backend Dockerfile
+────────────────────────────
+□ Create backend/Dockerfile
+
+□ Build and test backend container locally
+
+□ Optimize image size (multi-stage build if needed)
+
+Day 3-4: Frontend Dockerfile
+─────────────────────────────
+□ Create frontend/Dockerfile (multi-stage: build + nginx)
+
+□ Build and test frontend container
+
+Day 5-6: Docker Compose Integration
+────────────────────────────────────
+□ Update docker-compose.yml to include all services:
+  - Milvus stack (etcd, MinIO, Milvus)
+  - Backend API
+  - Frontend
+  - LLM server (if possible, or document manual start)
+
+□ Add health checks to all services
+
+□ Test full stack with docker-compose up
+
+Day 7: Deployment Documentation
+────────────────────────────────
+□ Create DEPLOYMENT.md with:
+  - Prerequisites
+  - Step-by-step deployment instructions
+  - Environment variables configuration
+  - Troubleshooting guide
+
+□ Git commit: "Week 7 complete: Full containerization"
+
+PHASE 2 COMPLETE: ✓ Production-ready AI Mentor with advanced features
+
+============================================================================
+PHASE 3: POLISH & EVALUATION (Weeks 8-10)
+============================================================================
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 8: EVALUATION & METRICS
+────────────────────────────────────────────────────────────────────────────
+
+□ Create 20-question evaluation bank (from Week 6 of original plan)
+
+□ Run questions through both simple RAG and agentic RAG
+
+□ Score responses on:
+  - Answer correctness (1-5)
+  - Context relevance (1-5)
+  - Clarity (1-5)
+  - Hallucination check (yes/no)
+
+□ Document results in evaluation_results.md
+
+□ Identify weaknesses and areas for improvement
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 9: REFINEMENT & OPTIMIZATION
+────────────────────────────────────────────────────────────────────────────
+
+□ Address evaluation findings:
+  - Tune chunking parameters if retrieval is poor
+  - Refine system prompts if responses lack clarity
+  - Adjust similarity thresholds
+  - Improve error messages
+
+□ Performance optimization:
+  - Profile slow endpoints
+  - Add caching for repeated queries (optional)
+  - Optimize frontend bundle size
+
+□ Security review:
+  - Input validation
+  - Rate limiting (optional)
+  - CORS configuration for production
+
+────────────────────────────────────────────────────────────────────────────
+WEEK 10: DOCUMENTATION & PROJECT WRAP-UP
+────────────────────────────────────────────────────────────────────────────
+
+□ Comprehensive documentation:
+  - Architecture deep-dive
+  - API reference
+  - Development guide
+  - User guide
+
+□ Create project presentation/demo
+
+□ Reflection document:
+  - What worked well
+  - What challenges were encountered
+  - Lessons learned
+  - Future enhancement roadmap
+
+□ Final Git commit and tag v1.0.0
+
+PHASE 3 COMPLETE: ✓ Polished, documented, production-ready AI Mentor
+
+============================================================================
+APPENDIX: RISK MITIGATION STRATEGIES
+============================================================================
+
+If Week 5-7 (Phase 2) Run Over Schedule:
+─────────────────────────────────────────
+- Skip Milvus migration (stay with ChromaDB)
+- Skip WebSocket streaming (keep simple HTTP)
+- Focus only on LangGraph agentic RAG OR streaming (not both)
+- Extend timeline by 1-2 weeks or cut features
+
+If LangGraph Proves Too Complex:
+─────────────────────────────────
+- Stick with simple RAG from Phase 1
+- Implement basic query rewriting without full agent loop
+- Declare Phase 1 MVP as final deliverable
+
+If Performance is Inadequate:
+──────────────────────────────
+- Reduce chunk size to 256 tokens
+- Reduce similarity_top_k from 3 to 2
+- Use smaller model (e.g., TinyLlama) for faster iteration
+- Add response caching
+
+If Runpod Costs Exceed Budget:
+───────────────────────────────
+- Use smaller GPU instance (RTX 3060 12GB instead of A5000)
+- Quantize model further (Q4 instead of Q5)
+- Pause instance when not actively developing
+- Consider switching to free tier local inference (slower)
+
+============================================================================
+CRITICAL SUCCESS FACTORS
+============================================================================
+
+1. **Ruthless Scope Management**: If something isn't working after 2 days, either simplify or skip
+2. **Verify Each Week**: Don't move to next week until current deliverable is working
+3. **Commit Often**: Daily commits create restore points if things break
+4. **Document as You Go**: Don't leave documentation for the end
+5. **Test on Real Questions**: Use actual CS educational content, not toy examples
+6. **Buffer is Sacred**: Weeks 8-10 are your safety net - don't steal from them
+
+============================================================================
+WEEKLY TIME ALLOCATION (for solo developer)
+============================================================================
+
+Expected hours per week: 25-30 hours (realistic for part-time/focused work)
+
+Week 1: 25 hours (setup is straightforward)
+Week 2: 30 hours (RAG implementation is meaty)
+Week 3: 25 hours (UI is mostly boilerplate)
+Week 4: 20 hours (testing and polish)
+Week 5: 35 hours (LangGraph learning curve)
+Week 6: 30 hours (WebSocket + Milvus)
+Week 7: 25 hours (Containerization)
+Week 8: 20 hours (Evaluation)
+Week 9: 25 hours (Refinement)
+Week 10: 15 hours (Documentation)
+
+TOTAL: 250-270 hours over 10 weeks
+
+============================================================================
+FINAL NOTES
+============================================================================
+
+This revised plan is realistic because:
+✓ Phase 1 (weeks 1-4) delivers working MVP with simple architecture
+✓ Each week has concrete, testable deliverables
+✓ Complex features (LangGraph, streaming) are deferred to Phase 2
+✓ 3 weeks of buffer for evaluation, refinement, and documentation
+✓ Clear decision points to cut scope if needed
+✓ Acknowledges learning curve and debugging time
+
+The original 7-week plan was architecturally excellent but operationally
+unrealistic. This 10-week phased approach maintains the vision while
+respecting the realities of solo development, new technology learning curves,
+and the inevitability of debugging and iteration.
+
+Good luck! Remember: A working simple system is infinitely more valuable than
+a non-working complex system. Ship Phase 1, then enhance.
