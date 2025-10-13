@@ -30,7 +30,6 @@ Day 1-2: System Preparation
 ───────────────────────────
 □ Pre-work (do BEFORE Week 1):
   - Create Runpod account and verify payment method
-  - Download Mistral-7B-Instruct-v0.2 Q5_K_M model (4.4GB) to local machine
   - Prepare 3-5 sample CS textbook PDFs (10-50 pages each)
   - Install VS Code with Remote-SSH extension on local laptop
 
@@ -66,12 +65,19 @@ Day 3: Project Structure & Git
 
 □ Create .gitignore (use comprehensive version covering Python, Node.js, models)
 
-□ Upload model file to Runpod:
+□ Download model file directly to Runpod (saves 4.4GB local storage):
+
+  # On Runpod instance
+  wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.q5_k_m.gguf \
+    -P ~/ai-mentor-project/models/
+
+  # Expected download size: 4.4GB
+  # Runpod instance has ample storage (typically 100GB+)
+
+□ Upload sample PDFs to course_materials/ via scp:
 
   # From local machine
-  scp mistral-7b-instruct-v0.2.q5_k_m.gguf runpod:~/ai-mentor-project/models/
-
-□ Upload sample PDFs to course_materials/
+  scp /path/to/your/pdfs/*.pdf runpod:~/ai-mentor-project/course_materials/
 
 □ Initial commit and push to GitHub
 
