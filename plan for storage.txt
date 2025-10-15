@@ -1,0 +1,178 @@
+The issue with the plan is that a NAS storage cannot be used with RunPod as it has to be on the same location datacenter as the Pod I will use, and not every Pod is always available in the same location datacenter. A workaround for this is to pull the files from one place all at once initially when starting up the Runpod instance with VSCode with SSH. It needs to be set up so that I don't have to run the following every time I start the instance:
+apt-get update && apt-get install -y curl
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+apt-get install -y nodejs
+
+Verify node.js and npm versions:
+
+# Check the Node.js version
+node -v
+
+# Check the npm version
+npm -v
+
+npm install -g @anthropic-ai/claude-code
+
+claude
+
+#
+Also, there are many files like the Mistral file, docker images, dependencies etc which we have to account for, here's what Gemini had to say:
+"Of course. Baking the model directly into the Docker image is a great choice for simplicity and creating a self-contained, portable service. The startup process on any new pod becomes a single, optimized `docker pull` command.
+
+Here are the detailed steps to get this done.
+
+### **The Overall Plan 🗺️**
+
+1.  **Locally:** We'll create a special `Dockerfile` that copies the model file into the image.
+2.  **Locally:** We'll build this large image (\~10 GB) and tag it.
+3.  **Locally:** We'll push the image to a container registry like Docker Hub.
+4.  **On RunPod:** We'll modify the `docker-compose.yml` to pull and use this new, pre-packaged image instead of building it on the pod.
+
+-----
+
+### **Step 1: Prepare Your Local Environment**
+
+On your **local computer** (not the RunPod instance), you need Docker installed and the Mistral model file.
+
+First, create a dedicated folder for this service and download the model into it.
+
+```bash
+# 1. Create a folder to work in
+mkdir llm-server
+cd llm-server
+
+# 2. Download the model file into this folder (one-time download)
+wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.q5_k_m.gguf
+```
+
+You should now have a folder named `llm-server` containing the **4.4 GB** model file.
+
+### **Step 2: Create the `Dockerfile`**
+
+Inside the `llm-server` directory, create a new file named `Dockerfile` (no extension) and add the following content. This file is the blueprint for our image.
+
+```dockerfile
+# Dockerfile
+
+# Start from the official NVIDIA CUDA base image, which has the necessary GPU drivers
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Install Python and other system dependencies
+# Using a single RUN command with && chains the commands and reduces image layers
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for llama-cpp-python to build with GPU support
+ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on"
+ENV FORCE_CMAKE=1
+
+# Install the Python library
+RUN pip3 install --no-cache-dir "llama-cpp-python[server]==0.2.56"
+
+# Create a directory for the model inside the image
+RUN mkdir /models
+
+# --- This is the most important step ---
+# Copy the model file from your local machine directly into the image's filesystem
+COPY mistral-7b-instruct-v0.2.q5_k_m.gguf /models/
+
+# Expose the port the server will run on
+EXPOSE 8080
+
+# The command to execute when the container starts
+# It points to the model path *inside* the container
+CMD ["python3", "-m", "llama_cpp.server", \
+     "--model", "/models/mistral-7b-instruct-v0.2.q5_k_m.gguf", \
+     "--n_gpu_layers", "-1", \
+     "--host", "0.0.0.0", \
+     "--port", "8080", \
+     "--chat_format", "mistral-instruct"]
+```
+
+### **Step 3: Build and Push the Image to Docker Hub**
+
+Now we'll build the image and push it to a registry. For this, you'll need a free [Docker Hub](https://hub.docker.com/) account.
+
+```bash
+# 1. Log in to Docker Hub from your terminal
+# It will prompt for your username and password (or an access token)
+docker login
+
+# 2. Build the image from your Dockerfile
+# Replace 'your-username' with your actual Docker Hub username
+# The '-t' flag tags the image for easy reference
+# The '.' at the end tells Docker to look for the Dockerfile in the current directory
+docker build -t your-username/ai-mentor-llm:v1 .
+
+# NOTE: This build process will take a while (10-20 minutes) as it downloads
+# the large CUDA base image and installs dependencies.
+
+# 3. Push your newly built image to Docker Hub
+# This will also take a while, as it's uploading ~10 GB.
+docker push your-username/ai-mentor-llm:v1
+```
+
+Once this is done, your self-contained LLM server is available anywhere in the world\!
+
+-----
+
+### **Step 4: Modify the `docker-compose.yml` on RunPod**
+
+This is the final step. On your RunPod instance, you'll modify your `docker-compose.yml` to use your new image. You no longer need to build the image on the pod or mount a local model file.
+
+**This is a critical change.** We are replacing the `build` instruction with an `image` instruction for the `llm` service.
+
+```yaml
+# docker-compose.yml on RunPod
+
+version: '3.8'
+
+services:
+  # ... (etcd, minio, milvus services remain the same) ...
+
+  # LLM INFERENCE SERVER (MODIFIED)
+  llm:
+    # We now pull the pre-built image directly from Docker Hub.
+    # Replace 'your-username' with your actual Docker Hub username.
+    image: your-username/ai-mentor-llm:v1
+    
+    # We REMOVED the 'build:' section.
+    # We REMOVED the 'volumes:' section that mounted the model file.
+    
+    container_name: ai-mentor-llm
+    ports:
+      - "8080:8080"
+    networks:
+      - ai_mentor_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # ... (backend and frontend services remain the same) ...
+
+networks:
+  ai_mentor_network:
+    driver: bridge
+```
+
+### **The New, Simplified Workflow**
+
+Now, every time you start a fresh RunPod instance, your process is much simpler:
+
+1.  Start the pod.
+2.  Clone your repository (which contains the updated `docker-compose.yml`).
+3.  Run `docker-compose up -d`.
+
+That's it\! Docker will see the `image: your-username/ai-mentor-llm:v1` line and begin pulling the complete, ready-to-use image from Docker Hub. Once the download is finished, the server starts instantly with the model already inside. No more `wget`, and no more waiting for `pip install` on the pod itself."

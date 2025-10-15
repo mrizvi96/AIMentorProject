@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚀 Quick Start
+
+**New to this project?** Start with [RUNPOD_QUICK_START.md](./RUNPOD_QUICK_START.md) for streamlined Runpod setup that eliminates repetitive configuration.
+
+**TL;DR:** Run `./runpod_startup.sh` to start all services in ~3-5 minutes.
+
+---
+
 ## Project Overview
 
 AI Mentor is a modular, scalable educational platform for computer science students. It uses an agentic RAG (Retrieval-Augmented Generation) system powered by a local LLM to provide intelligent tutoring. The system runs on a remote Runpod GPU instance with RTX A5000 (24GB VRAM).
@@ -81,7 +89,30 @@ frontend/
 
 ## Development Commands
 
-### Backend (Run on Runpod GPU Instance)
+### Streamlined Runpod Startup (Recommended)
+
+**For complete setup instructions, see [RUNPOD_QUICK_START.md](./RUNPOD_QUICK_START.md)**
+
+**Quick Start (after one-time preparation):**
+```bash
+# Clone repository on Runpod instance
+git clone https://github.com/YOUR_USERNAME/AIMentorProject.git
+cd AIMentorProject
+
+# Run automated startup script (starts all services)
+./runpod_startup.sh
+```
+
+This single command starts:
+- Milvus vector database (Docker)
+- LLM inference server (Docker, with model pre-loaded)
+- Backend FastAPI server (tmux session)
+
+**Time: ~3-5 minutes** (vs 30-60 minutes manual setup)
+
+---
+
+### Backend (Run on Runpod GPU Instance) - Manual Setup
 
 **Environment Setup:**
 ```bash

@@ -3,6 +3,31 @@
 
 ---
 
+## 🚀 QUICK START: Streamlined Runpod Setup
+
+**Before starting Week 1, complete the one-time preparation:**
+
+See **[RUNPOD_QUICK_START.md](./RUNPOD_QUICK_START.md)** for the complete streamlined setup process that eliminates repetitive manual configuration.
+
+**Key improvements:**
+1. ✅ **Custom Runpod Template** - Pre-installed Node.js, Claude Code, Docker (~5 minutes vs 60+ minutes)
+2. ✅ **Pre-built Docker Images** - Model file baked into image, no 4.4GB download each time
+3. ✅ **Automated Startup Script** - One command (`./runpod_startup.sh`) to launch entire stack
+
+**One-time preparation (~2-3 hours):**
+- Build Docker image with Mistral model baked-in
+- Push to Docker Hub
+- Create custom Runpod template with pre-installed tools
+
+**Every startup (~3-5 minutes):**
+```bash
+git clone https://github.com/YOUR_USERNAME/AIMentorProject.git
+cd AIMentorProject
+./runpod_startup.sh
+```
+
+---
+
 ## EXECUTIVE SUMMARY
 
 **Timeline:** 6 weeks (compressed from original 7 weeks)
