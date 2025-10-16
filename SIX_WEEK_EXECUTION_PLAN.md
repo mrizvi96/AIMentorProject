@@ -7,23 +7,26 @@
 
 **Before starting Week 1, complete the one-time preparation:**
 
-See **[RUNPOD_QUICK_START.md](./RUNPOD_QUICK_START.md)** for the complete streamlined setup process that eliminates repetitive manual configuration.
+See **[RUNPOD_QUICK_START.md](./RUNPOD_QUICK_START.md)** and **[USB_WORKFLOW.md](./USB_WORKFLOW.md)** for the complete streamlined setup process that eliminates repetitive manual configuration.
 
 **Key improvements:**
-1. ✅ **Custom Runpod Template** - Pre-installed Node.js, Claude Code, Docker (~5 minutes vs 60+ minutes)
-2. ✅ **Pre-built Docker Images** - Model file baked into image, no 4.4GB download each time
-3. ✅ **Automated Startup Script** - One command (`./runpod_startup.sh`) to launch entire stack
+1. ✅ **USB Drive Storage** - Portable 5GB Mistral model on USB drive (~10-15 minutes upload vs 60+ minutes download)
+2. ✅ **Automated Startup Script** - One command (`./start_llm_server.sh`) to launch LLM server
+3. ✅ **Simple Workflow** - Upload model once from USB, start services quickly
 
-**One-time preparation (~2-3 hours):**
-- Build Docker image with Mistral model baked-in
-- Push to Docker Hub
-- Create custom Runpod template with pre-installed tools
+**One-time preparation (~5-10 minutes):**
+- Download Mistral model to USB drive (already completed if you have the model file)
+- Keep USB drive as portable model storage
 
-**Every startup (~3-5 minutes):**
+**Every startup (~10-15 minutes):**
 ```bash
+# 1. Upload model from USB drive to /workspace/models/ (5-10 minutes)
+# 2. Clone repository
 git clone https://github.com/YOUR_USERNAME/AIMentorProject.git
 cd AIMentorProject
-./runpod_startup.sh
+
+# 3. Start LLM server
+./start_llm_server.sh
 ```
 
 ---
@@ -154,20 +157,31 @@ docker --version
 nvidia-smi        # Verify GPU (RTX A5000, 24GB)
 ```
 
-### **Task 1.3: Download Model** (20-30 min, depends on network)
+### **Task 1.3: Upload Model from USB Drive** (5-10 min, depends on upload speed)
+
+**See [USB_WORKFLOW.md](./USB_WORKFLOW.md) for complete instructions.**
 
 ```bash
-# Download Mistral-7B-Instruct Q5_K_M (4.4GB)
-mkdir -p models
-cd models
-wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.q5_k_m.gguf
+# On Runpod instance, create models directory
+mkdir -p /workspace/models
 
-# Verify download
-ls -lh mistral-7b-instruct-v0.2.q5_k_m.gguf
-# Should show ~4.4GB
+# On your local Windows machine:
+# 1. Plug in USB drive (should contain Mistral-7B-Instruct-v0.2.Q5_K_M.gguf)
+# 2. Copy model from USB (D:) to C:\temp\
+# 3. In VS Code Remote-SSH connected to Runpod:
+#    - Navigate to /workspace/models/
+#    - Right-click and select "Upload..."
+#    - Select the model file from C:\temp\
 
-cd ..
+# Alternative: Use SCP from PowerShell
+# scp C:\temp\Mistral-7B-Instruct-v0.2.Q5_K_M.gguf root@[RUNPOD_IP]:/workspace/models/
+
+# Verify upload on Runpod
+ls -lh /workspace/models/Mistral-7B-Instruct-v0.2.Q5_K_M.gguf
+# Should show ~4.8-5.1GB
 ```
+
+**Note:** Model is stored on USB drive for portability across different Runpod instances.
 
 ### **Task 1.4: Backend Python Environment** (30 min)
 

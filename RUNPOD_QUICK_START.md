@@ -1,614 +1,432 @@
 # Runpod Quick Start Guide
-**For AI Mentor Project - Weeks 1-2 Focus**
+**For AI Mentor Project - USB Drive Workflow**
 
 ## Problem Statement
 Runpod instances are ephemeral and datacenter-specific. We need a system where:
-1. **No manual dependency installation** each time (Node.js, Claude Code, etc.)
-2. **Model files** are readily available (~4.4GB Mistral model)
-3. **Docker images** with dependencies are pre-built
-4. **One-command startup** to get the entire stack running
+1. **No repetitive model downloads** (4.8GB Mistral model takes 60+ minutes)
+2. **Portable model storage** across different Runpod instances
+3. **Quick startup** to get the LLM server running (~10-15 minutes)
 
 ---
 
-## Solution Architecture
+## Solution: USB Drive Workflow
 
-### Three-Layer Strategy:
+Instead of downloading the model from HuggingFace every time or building complex Docker images, we use a **portable USB drive** to store the model and upload it to each new Runpod instance.
 
-**Layer 1: Custom Runpod Template** → Pre-installed system tools
-**Layer 2: Pre-built Docker Images** → Pre-packaged services with dependencies
-**Layer 3: Automated Startup Script** → One command to orchestrate everything
-
----
-
-## PHASE 1: One-Time Preparation (Do This Once Locally)
-
-### 1.1: Build Docker Image with Baked-in Model
-
-This eliminates the need to download the 4.4GB model every time.
-
-```bash
-# Create a local directory
-mkdir ~/ai-mentor-docker-build && cd ~/ai-mentor-docker-build
-
-# Download Mistral model (one-time 4.4GB download)
-wget https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.q5_k_m.gguf
-
-# Create Dockerfile for LLM server
-cat > Dockerfile.llm << 'EOF'
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
-
-WORKDIR /app
-
-# Install Python
-RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Configure for GPU support
-ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on"
-ENV FORCE_CMAKE=1
-
-# Install llama-cpp-python with pinned version
-RUN pip3 install --no-cache-dir "llama-cpp-python[server]==0.2.56"
-
-# Create models directory
-RUN mkdir /models
-
-# *** KEY STEP: Bake model into image ***
-COPY mistral-7b-instruct-v0.2.q5_k_m.gguf /models/
-
-EXPOSE 8080
-
-CMD ["python3", "-m", "llama_cpp.server", \
-     "--model", "/models/mistral-7b-instruct-v0.2.q5_k_m.gguf", \
-     "--n_gpu_layers", "-1", \
-     "--n_ctx", "4096", \
-     "--host", "0.0.0.0", \
-     "--port", "8080", \
-     "--chat_format", "mistral-instruct"]
-EOF
-
-# Build image (replace YOUR_USERNAME with your Docker Hub username)
-docker build -f Dockerfile.llm -t YOUR_USERNAME/ai-mentor-llm:v1 .
-
-# Push to Docker Hub (requires: docker login)
-docker login
-docker push YOUR_USERNAME/ai-mentor-llm:v1
-
-# This will take time: ~10GB image upload
-```
-
-### 1.2: Create Backend Docker Image
-
-```bash
-# Create backend Dockerfile
-cat > Dockerfile.backend << 'EOF'
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies with pinned versions
-RUN pip install --no-cache-dir \
-    "fastapi[all]==0.109.0" \
-    "uvicorn[standard]==0.27.0" \
-    "python-dotenv==1.0.0" \
-    "llama-index==0.10.30" \
-    "llama-index-vector-stores-milvus==0.1.5" \
-    "llama-index-embeddings-huggingface==0.2.0" \
-    "pymilvus==2.3.6" \
-    "PyMuPDF==1.23.21" \
-    "sentence-transformers==2.5.1"
-
-# Copy application code (will be mounted as volume in practice)
-COPY backend/ /app/
-
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-EOF
-
-# Note: For now, we'll build this later since we need the actual backend code
-# This is just the template
-```
+**Benefits:**
+- ✅ Model file always available on USB drive
+- ✅ Upload from USB (~5-10 minutes) vs download from HuggingFace (~60+ minutes)
+- ✅ Works across any Runpod instance (no datacenter dependency)
+- ✅ Simple, reliable workflow
 
 ---
 
-## PHASE 2: Create Custom Runpod Template (One-Time)
+## Prerequisites
 
-### 2.1: Start a Fresh Runpod Instance
+### On Your Local Machine
+- USB drive with 10GB+ free space
+- Mistral-7B-Instruct-v0.2.Q5_K_M.gguf (5.13 GB) stored on USB drive
+- VS Code with Remote-SSH extension installed
+- Windows 10/11 with PowerShell
+
+### On Runpod
+- GPU instance with RTX A5000 (24GB VRAM) or similar
+- Base image: `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404`
+- SSH access enabled
+
+---
+
+## Quick Start Workflow
+
+### Step 1: Start Runpod Instance
 
 1. Go to Runpod dashboard
-2. Deploy pod with: `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404`
-3. GPU: RTX A5000 (24GB VRAM)
-4. Wait for pod to start
+2. Deploy new pod:
+   - **GPU:** RTX A5000 (24GB VRAM)
+   - **Template:** `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404`
+   - **Container Disk:** 50GB minimum
+3. Wait for pod to start
+4. Note the SSH connection details (IP address)
 
-### 2.2: Install System-Level Tools
+### Step 2: Connect via VS Code Remote-SSH
 
-```bash
-# SSH into the fresh pod
-ssh root@<POD_IP>
+1. Open VS Code
+2. Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac)
+3. Type "Remote-SSH: Connect to Host"
+4. Enter: `root@[RUNPOD_IP]` (replace with your pod's IP)
+5. Enter password when prompted
+6. Wait for connection to establish
 
-# Install all required system packages
-apt-get update && apt-get install -y \
-    curl \
-    wget \
-    git \
-    htop \
-    tmux \
-    jq \
-    docker.io \
-    docker-compose-plugin
+### Step 3: Upload Model from USB Drive
 
-# Install Node.js 20 (for Claude Code)
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
+**Option A: Via VS Code (Recommended)**
 
-# Install Claude Code CLI globally
-npm install -g @anthropic-ai/claude-code
+1. In VS Code (connected to Runpod), open terminal: `` Ctrl+` ``
+2. Create models directory:
+   ```bash
+   mkdir -p /workspace/models
+   ```
 
-# Verify installations
-node -v          # Should be v20.x
-npm -v
-docker --version
-claude --version # Should show Claude Code version
+3. On your Windows machine:
+   - Plug in USB drive (appears as D: or E:)
+   - Copy `Mistral-7B-Instruct-v0.2.Q5_K_M.gguf` from USB to `C:\temp\`
 
-# Test Docker
-docker run hello-world
+4. In VS Code:
+   - Open Explorer sidebar (Ctrl+Shift+E)
+   - Navigate to `/workspace/models/`
+   - Right-click and select "Upload..."
+   - Select the model file from `C:\temp\`
+   - **Wait 5-10 minutes** for upload to complete
+
+5. Verify upload:
+   ```bash
+   ls -lh /workspace/models/Mistral-7B-Instruct-v0.2.Q5_K_M.gguf
+   # Should show: 4.8G or 5.1G
+   ```
+
+**Option B: Via SCP (Command Line)**
+
+```powershell
+# From Windows PowerShell
+# Copy model from USB to temp folder first
+Copy-Item -Path "D:\Mistral-7B-Instruct-v0.2.Q5_K_M.gguf" -Destination "C:\temp\"
+
+# Upload to Runpod via SCP
+scp "C:\temp\Mistral-7B-Instruct-v0.2.Q5_K_M.gguf" root@[RUNPOD_IP]:/workspace/models/
 ```
 
-### 2.3: Pre-pull Common Docker Images
+### Step 4: Clone Repository and Setup
 
 ```bash
-# Pre-pull images so they're cached in the template
-docker pull quay.io/coreos/etcd:v3.5.5
-docker pull minio/minio:RELEASE.2023-03-20T20-16-18Z
-docker pull milvusdb/milvus:v2.3.10
-
-# Pull your custom LLM image (replace YOUR_USERNAME)
-docker pull YOUR_USERNAME/ai-mentor-llm:v1
-
-# Verify
-docker images
-```
-
-### 2.4: Save as Runpod Template
-
-1. In Runpod UI: Go to your pod
-2. Click "Save Template"
-3. Name it: **"ai-mentor-ready-v1"**
-4. This template now has:
-   - Node.js 20
-   - Claude Code CLI
-   - Docker + Docker Compose
-   - Pre-pulled Docker images (~10GB cached)
-
----
-
-## PHASE 3: Every-Time Startup (Fast, Automated)
-
-Now when you start a NEW Runpod instance:
-
-### 3.1: Launch Pod from Custom Template
-
-1. Runpod Dashboard → Deploy
-2. **Select Template**: "ai-mentor-ready-v1"
-3. GPU: RTX A5000 (24GB)
-4. Start pod
-
-### 3.2: Clone Repository and Run Startup Script
-
-```bash
-# SSH into pod
-ssh root@<POD_IP>
-
-# Navigate to workspace
-cd /workspace  # Or /root, depending on Runpod config
+# On Runpod instance (via VS Code terminal)
+cd /workspace
 
 # Clone your repository
 git clone https://github.com/YOUR_USERNAME/AIMentorProject.git
 cd AIMentorProject
 
-# Run the automated startup script
-./runpod_startup.sh
+# Make startup script executable
+chmod +x start_llm_server.sh
 ```
 
-That's it! The startup script handles everything.
+### Step 5: Start LLM Server
+
+```bash
+# Run the automated startup script
+./start_llm_server.sh
+```
+
+The script will:
+- Install llama-cpp-python with CUDA support (~2-3 minutes)
+- Start Mistral-7B server on port 8080
+- Display server status and access URLs
+
+**Total time: ~10-15 minutes** (mostly model upload)
 
 ---
 
-## PHASE 4: Create the Automated Startup Script
+## Testing the Setup
 
-Create `runpod_startup.sh` in your project root:
+### Test 1: Verify LLM Server
 
 ```bash
-#!/bin/bash
-# runpod_startup.sh - Automated startup for AI Mentor on Runpod
+# Check if server is running
+curl http://localhost:8080/v1/models
 
-set -e  # Exit on error
+# Expected output:
+# {
+#   "data": [
+#     {
+#       "id": "mistral-7b-instruct-v0.2.q5_k_m.gguf",
+#       ...
+#     }
+#   ]
+# }
+```
 
-echo "================================================"
-echo "🚀 AI Mentor Runpod Startup Script"
-echo "================================================"
-echo ""
+### Test 2: Test Chat Completion
 
-# Color codes
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello! What is Python?"}],
+    "max_tokens": 100,
+    "temperature": 0.7
+  }'
+```
 
-# Get Runpod IP (if available)
-RUNPOD_IP=$(hostname -I | awk '{print $1}')
-echo -e "${BLUE}📍 Pod IP: $RUNPOD_IP${NC}"
-echo ""
+You should see a JSON response with the AI's answer.
 
-# ============================================
-# Step 1: Start Milvus Stack (Docker Compose)
-# ============================================
-echo -e "${YELLOW}Step 1: Starting Milvus Vector Database...${NC}"
+---
 
-# Create volumes directories if they don't exist
-mkdir -p volumes/{etcd,minio,milvus}
+## Starting Additional Services
 
-# Start docker-compose services
+Once the LLM server is running, start the rest of your stack:
+
+### Start Milvus Vector Database
+
+```bash
+cd /workspace/AIMentorProject
+
+# Start Docker Compose services
 docker-compose up -d
 
-echo -e "${GREEN}✓ Docker containers started${NC}"
-echo "  Waiting 90 seconds for Milvus to be healthy..."
+# Wait for services to be healthy (~90 seconds)
 sleep 90
 
-# Verify Milvus
+# Verify
 docker-compose ps
+# Should show: milvus-standalone, milvus-etcd, milvus-minio (all "Up")
+```
 
-echo ""
+### Start Backend API
 
-# ============================================
-# Step 2: Start LLM Server (Docker)
-# ============================================
-echo -e "${YELLOW}Step 2: Starting LLM Inference Server...${NC}"
+```bash
+cd /workspace/AIMentorProject/backend
 
-# Check if LLM container is already in docker-compose
-# If not, start it manually
-if ! docker-compose ps | grep -q "llm"; then
-    echo "  Starting LLM container from pre-built image..."
-
-    docker run -d \
-        --name ai-mentor-llm \
-        --gpus all \
-        -p 8080:8080 \
-        YOUR_USERNAME/ai-mentor-llm:v1
-
-    echo -e "${GREEN}✓ LLM container started${NC}"
-    echo "  Waiting 120 seconds for model to load..."
-    sleep 120
-else
-    echo -e "${GREEN}✓ LLM service already running via docker-compose${NC}"
-fi
-
-# Test LLM server
-echo "  Testing LLM server..."
-curl -s http://localhost:8080/v1/models | jq '.data[0].id' || echo "  (LLM not ready yet, may need more time)"
-
-echo ""
-
-# ============================================
-# Step 3: Setup Backend Python Environment
-# ============================================
-echo -e "${YELLOW}Step 3: Setting up Backend Environment...${NC}"
-
-cd backend
-
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    echo "  Creating Python virtual environment..."
-    python3 -m venv venv
-fi
-
-# Activate and install dependencies
+# Create virtual environment
+python3 -m venv venv
 source venv/bin/activate
 
-if [ -f "requirements.txt" ]; then
-    echo "  Installing Python dependencies from requirements.txt..."
-    pip install -q --upgrade pip
-    pip install -q -r requirements.txt
-else
-    echo "  No requirements.txt found, installing from scratch..."
-    pip install -q --upgrade pip
-    pip install -q \
-        "fastapi[all]==0.109.0" \
-        "uvicorn[standard]==0.27.0" \
-        "python-dotenv==1.0.0" \
-        "llama-index==0.10.30" \
-        "llama-index-vector-stores-milvus==0.1.5" \
-        "llama-index-embeddings-huggingface==0.2.0" \
-        "pymilvus==2.3.6" \
-        "PyMuPDF==1.23.21" \
-        "sentence-transformers==2.5.1"
-fi
+# Install dependencies
+pip install -r requirements.txt
 
-echo -e "${GREEN}✓ Backend environment ready${NC}"
+# Start FastAPI server (in tmux for persistence)
+tmux new-session -d -s backend "cd /workspace/AIMentorProject/backend && source venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 
-# ============================================
-# Step 4: Start Backend API Server (tmux)
-# ============================================
-echo "  Starting FastAPI server in tmux session..."
-
-# Kill existing session if it exists
-tmux kill-session -t api 2>/dev/null || true
-
-# Start new session
-tmux new-session -d -s api "cd /workspace/AIMentorProject/backend && source venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-
-echo -e "${GREEN}✓ FastAPI server started (tmux session: api)${NC}"
-
-cd ..
-echo ""
-
-# ============================================
-# Step 5: System Health Check
-# ============================================
-echo -e "${YELLOW}Step 4: Running Health Checks...${NC}"
-
-sleep 5
-
-# Check Milvus
-echo -n "  Milvus:      "
-if docker-compose ps | grep -q "milvus.*Up"; then
-    echo -e "${GREEN}✓ Running${NC}"
-else
-    echo -e "❌ Not running"
-fi
-
-# Check LLM
-echo -n "  LLM Server:  "
-if curl -s http://localhost:8080/v1/models > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Running (port 8080)${NC}"
-else
-    echo -e "❌ Not responding"
-fi
-
-# Check Backend API
-echo -n "  Backend API: "
-if curl -s http://localhost:8000/ > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Running (port 8000)${NC}"
-else
-    echo -e "❌ Not responding"
-fi
-
-echo ""
-echo "================================================"
-echo -e "${GREEN}✅ Startup Complete!${NC}"
-echo "================================================"
-echo ""
-echo "📌 Service URLs:"
-echo "   • Backend API:  http://$RUNPOD_IP:8000"
-echo "   • API Docs:     http://$RUNPOD_IP:8000/docs"
-echo "   • LLM Server:   http://$RUNPOD_IP:8080"
-echo "   • Milvus gRPC:  $RUNPOD_IP:19530"
-echo ""
-echo "🔧 Useful Commands:"
-echo "   • View API logs:      tmux attach -t api"
-echo "   • Docker logs:        docker-compose logs -f"
-echo "   • Check GPU:          nvidia-smi"
-echo "   • Stop all services:  docker-compose down"
-echo ""
-echo "📚 Next Steps:"
-echo "   1. If this is first time: Run data ingestion"
-echo "      cd backend && source venv/bin/activate"
-echo "      python ingest.py --directory ../course_materials"
-echo ""
-echo "   2. Test the system:"
-echo "      curl -X POST http://localhost:8000/api/chat \\"
-echo "        -H 'Content-Type: application/json' \\"
-echo "        -d '{\"message\": \"What is Python?\"}' | jq"
-echo ""
-echo "   3. Start frontend (on local machine):"
-echo "      cd frontend && npm run dev"
-echo ""
+# Check if running
+curl http://localhost:8000/
+# Should return: {"status": "AI Mentor API is running"}
 ```
 
-Make it executable:
-```bash
-chmod +x runpod_startup.sh
-git add runpod_startup.sh
-git commit -m "Add automated Runpod startup script"
-git push
-```
-
----
-
-## Updated docker-compose.yml
-
-Update your `docker-compose.yml` to use the pre-built LLM image:
-
-```yaml
-version: '3.8'
-
-services:
-  etcd:
-    container_name: milvus-etcd
-    image: quay.io/coreos/etcd:v3.5.5
-    environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-      - ETCD_SNAPSHOT_COUNT=50000
-    volumes:
-      - ./volumes/etcd:/etcd
-    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
-    healthcheck:
-      test: ["CMD", "etcdctl", "endpoint", "health"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - ai_mentor_network
-
-  minio:
-    container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    ports:
-      - "9001:9001"
-      - "9000:9000"
-    volumes:
-      - ./volumes/minio:/minio_data
-    command: minio server /minio_data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - ai_mentor_network
-
-  milvus:
-    container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.10
-    command: ["milvus", "run", "standalone"]
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-    volumes:
-      - ./volumes/milvus:/var/lib/milvus
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 30s
-      start_period: 90s
-      timeout: 20s
-      retries: 3
-    ports:
-      - "19530:19530"
-      - "9091:9091"
-    depends_on:
-      - etcd
-      - minio
-    networks:
-      - ai_mentor_network
-
-  llm:
-    container_name: ai-mentor-llm
-    image: YOUR_USERNAME/ai-mentor-llm:v1  # Your pre-built image with model
-    ports:
-      - "8080:8080"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    networks:
-      - ai_mentor_network
-    restart: unless-stopped
-
-networks:
-  ai_mentor_network:
-    driver: bridge
-```
-
----
-
-## Summary: What Gets Pulled Up Automatically
-
-When you run `./runpod_startup.sh`:
-
-✅ **Milvus** (etcd, minio, milvus) - from pre-pulled images
-✅ **LLM Server** - from YOUR_USERNAME/ai-mentor-llm:v1 (model baked-in)
-✅ **Backend Python** - dependencies from requirements.txt
-✅ **FastAPI Server** - starts in tmux session
-
-**Total startup time: ~3-5 minutes** (vs 30-60 minutes manual setup)
-
----
-
-## Data Persistence Strategy
-
-### Option A: Network Storage (if available)
+### Check All Services
 
 ```bash
-# In runpod_startup.sh, add before docker-compose:
-if [ -d "/runpod-volume" ]; then
-    echo "Network storage detected, using persistent volumes..."
-    ln -sf /runpod-volume/ai-mentor/volumes ./volumes
-fi
-```
+# LLM Server (port 8080)
+curl -s http://localhost:8080/v1/models | jq
 
-### Option B: Manual Backup
+# Backend API (port 8000)
+curl -s http://localhost:8000/ | jq
 
-```bash
-# Before terminating pod
-tar -czf milvus-backup.tar.gz volumes/
-# Upload to S3, Google Drive, etc.
-
-# On new pod
-# Download backup
-tar -xzf milvus-backup.tar.gz
+# Milvus (port 19530 - gRPC, no curl test)
+docker-compose ps | grep milvus
 ```
 
 ---
 
-## Timeline Impact on Weeks 1-2
+## Workflow Summary
 
-### Old Process (Manual):
-- Day 1-2: 10-12 hours (mostly waiting for downloads and installations)
+### First Time Setup (One-Time)
+1. Download Mistral model to USB drive (if not already done)
+2. Keep USB drive in safe place
 
-### New Process (Automated):
-- **Preparation (one-time)**: 2-3 hours to build Docker images
-- **Every startup**: 3-5 minutes automated
+### Every New Runpod Instance
+1. Start Runpod pod (2 minutes)
+2. Connect via VS Code Remote-SSH (1 minute)
+3. Upload model from USB (5-10 minutes)
+4. Clone repository (30 seconds)
+5. Run `./start_llm_server.sh` (2-3 minutes)
+6. Start Milvus and Backend (optional, 2-3 minutes)
 
-**Time saved per session: ~2-3 hours**
+**Total: 10-20 minutes** vs 60-90 minutes downloading from HuggingFace!
+
+---
+
+## Comparison: Old vs New Workflow
+
+| Step | Old Workflow (HuggingFace Download) | New Workflow (USB Upload) |
+|------|-------------------------------------|---------------------------|
+| Model acquisition | Download from HF: 60+ min | Upload from USB: 5-10 min |
+| Dependencies | Install llama-cpp-python: 2-3 min | Install llama-cpp-python: 2-3 min |
+| Start server | 10 seconds | 10 seconds |
+| **Total Time** | **60-65 minutes** | **10-15 minutes** |
+| **Time Saved** | - | **50+ minutes** |
 
 ---
 
 ## Troubleshooting
 
-### Docker Images Not Found
-```bash
-# Check if images are pulled
-docker images | grep ai-mentor
+### Model Upload Fails or Times Out
 
-# Pull manually if needed
-docker pull YOUR_USERNAME/ai-mentor-llm:v1
+**Solution 1: Use SCP with compression**
+```powershell
+# From Windows PowerShell
+scp -C "C:\temp\Mistral-7B-Instruct-v0.2.Q5_K_M.gguf" root@[RUNPOD_IP]:/workspace/models/
 ```
 
-### GPU Not Detected
+**Solution 2: Use tmux to keep upload alive**
 ```bash
-# Check GPU visibility
+# On Runpod, create tmux session
+tmux new -s upload
+
+# Then use scp from local machine
+# If connection drops, reattach: tmux attach -s upload
+```
+
+### llama-cpp-python Installation Fails
+
+**Check CUDA availability:**
+```bash
 nvidia-smi
-
-# Test Docker GPU access
-docker run --rm --gpus all nvidia/cuda:12.1.0-base nvidia-smi
+python3 -c "import torch; print(torch.cuda.is_available())"
 ```
 
-### Tmux Sessions Not Starting
+**Reinstall with explicit CUDA support:**
 ```bash
-# List sessions
-tmux ls
+CMAKE_ARGS="-DGGML_CUDA=on" pip install --no-cache-dir --force-reinstall "llama-cpp-python[server]"
+```
 
-# Attach to session
-tmux attach -t api
+### Server Won't Start - Port Already in Use
 
-# Kill and restart
-tmux kill-session -t api
-./runpod_startup.sh
+```bash
+# Check what's using port 8080
+lsof -i :8080
+
+# Kill the process
+kill -9 [PID]
+
+# Restart server
+./start_llm_server.sh
+```
+
+### Model File Not Found
+
+```bash
+# Verify model location and name
+ls -lh /workspace/models/
+
+# The script expects:
+# /workspace/models/Mistral-7B-Instruct-v0.2.Q5_K_M.gguf
+
+# If filename is different, create symlink:
+ln -s /workspace/models/[ACTUAL_NAME].gguf /workspace/models/Mistral-7B-Instruct-v0.2.Q5_K_M.gguf
+```
+
+---
+
+## Data Persistence Strategy
+
+### Challenge
+Runpod volumes are ephemeral. When you stop the pod, **all data in /workspace is lost** (unless you have network storage).
+
+### Solutions
+
+#### Option A: Backup Milvus Data Before Stopping Pod
+
+```bash
+# Create backup
+cd /workspace/AIMentorProject
+tar -czf milvus-backup-$(date +%Y%m%d).tar.gz volumes/
+
+# Upload to cloud storage (example: Google Drive, S3, etc.)
+# Or download to local machine via VS Code
+
+# On next pod startup, restore:
+tar -xzf milvus-backup-20241016.tar.gz
+```
+
+#### Option B: Use Runpod Network Storage (if available)
+
+```bash
+# Check if network storage is available
+ls -l /runpod-volume
+
+# If yes, create symlink
+ln -s /runpod-volume/ai-mentor/volumes /workspace/AIMentorProject/volumes
+```
+
+#### Option C: Re-ingest Documents (For Development)
+
+```bash
+# Keep course_materials in Git or on USB drive
+# Re-run ingestion on each new pod (takes 5-10 min for small datasets)
+cd /workspace/AIMentorProject/backend
+source venv/bin/activate
+python ingest.py --directory ../course_materials/
+```
+
+---
+
+## Advanced: Automated Full Startup Script
+
+For convenience, you can create a single script that starts **all services** automatically.
+
+Create `/workspace/AIMentorProject/runpod_full_startup.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=========================================="
+echo "AI Mentor Full Stack Startup"
+echo "=========================================="
+
+# Start LLM server
+echo "1. Starting LLM server..."
+./start_llm_server.sh &
+LLM_PID=$!
+
+# Start Milvus
+echo "2. Starting Milvus..."
+docker-compose up -d
+sleep 90
+
+# Setup backend
+echo "3. Setting up backend..."
+cd backend
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+fi
+source venv/bin/activate
+pip install -q -r requirements.txt
+
+# Start backend in tmux
+echo "4. Starting backend API..."
+tmux kill-session -t backend 2>/dev/null || true
+tmux new-session -d -s backend "cd /workspace/AIMentorProject/backend && source venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+cd ..
+
+echo ""
+echo "=========================================="
+echo "Startup Complete!"
+echo "=========================================="
+echo "Services:"
+echo "  - LLM Server: http://localhost:8080"
+echo "  - Backend API: http://localhost:8000"
+echo "  - Milvus gRPC: localhost:19530"
+echo ""
+echo "View logs:"
+echo "  - LLM: Check terminal output"
+echo "  - Backend: tmux attach -t backend"
+echo "  - Milvus: docker-compose logs -f"
+```
+
+Make it executable and run:
+```bash
+chmod +x runpod_full_startup.sh
+./runpod_full_startup.sh
 ```
 
 ---
 
 ## Next Steps
 
-1. ✅ Complete one-time Docker image builds (Phase 1)
-2. ✅ Create custom Runpod template (Phase 2)
-3. ✅ Test startup script on fresh pod (Phase 3)
-4. ✅ Commit startup script to repository
-5. → Continue with Week 1-2 development tasks
+1. ✅ Complete model upload to Runpod
+2. ✅ Start LLM server with `./start_llm_server.sh`
+3. ✅ Start additional services (Milvus, Backend)
+4. → Begin Week 1 development tasks
+5. → Test the RAG pipeline with sample documents
+
+---
+
+## Summary
+
+**USB Drive Workflow Benefits:**
+- **Fast:** 10-15 min setup (vs 60+ min download)
+- **Portable:** Works across any Runpod instance
+- **Reliable:** No dependency on HuggingFace availability
+- **Simple:** No complex Docker builds or registries
+
+**Keep your USB drive safe** - it's your portable AI model storage that saves you 50+ minutes every time you start a new Runpod instance!

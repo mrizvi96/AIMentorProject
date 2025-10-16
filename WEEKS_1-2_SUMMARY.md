@@ -2,52 +2,61 @@
 
 ## What Changed
 
-The storage plan from `plan for storage.txt` has been fully integrated into the execution strategy. Here's what's new:
+The storage plan has been updated from Docker Hub to a **USB Drive workflow** for better portability and simplicity. Here's what's new:
 
 ### Problem Solved
 **Before:** Every Runpod startup required:
-- 30-60 minutes of manual setup
-- Installing Node.js, Claude Code, Docker each time
-- Downloading 4.4GB Mistral model
+- 60+ minutes to download 4.8GB Mistral model from HuggingFace
+- Manual installation of dependencies
 - Configuring Python environments
 - Starting services manually
 
 **After:** Every Runpod startup takes:
-- **3-5 minutes** with automated script
-- One command: `./runpod_startup.sh`
-- All dependencies pre-installed in custom template
-- Model baked into Docker image
+- **10-15 minutes** with USB drive upload
+- One command: `./start_llm_server.sh`
+- Portable model storage on USB drive
+- Works across any Runpod instance
 
 ---
 
 ## New Files Created
 
-### 1. `RUNPOD_QUICK_START.md` (Primary Reference)
-**Purpose:** Complete guide for streamlined Runpod setup
+### 1. `USB_WORKFLOW.md` (Primary Reference)
+**Purpose:** Complete guide for USB drive-based Runpod setup
 
 **Contents:**
-- **Phase 1:** One-time Docker image building (with model baked-in)
-- **Phase 2:** Creating custom Runpod template (with Node.js, Claude Code, Docker)
-- **Phase 3:** Automated every-time startup process
-- **Phase 4:** The startup script explained
+- Prerequisites (USB drive, model file, VS Code)
+- Quick start workflow (upload model, clone repo, start server)
+- Testing instructions
+- Service startup procedures
+- Troubleshooting guide
+- Comparison with old workflow
 
 **When to use:** Before starting Week 1 tasks
 
-### 2. `runpod_startup.sh` (Automation Script)
-**Purpose:** Single command to start entire stack
+### 2. `start_llm_server.sh` (Automation Script)
+**Purpose:** Single command to start LLM server
 
 **What it does:**
-1. Starts Milvus (etcd, minio, milvus-standalone)
-2. Starts LLM server (from Docker image with model)
-3. Creates Python venv and installs dependencies
-4. Starts FastAPI server in tmux session
-5. Runs health checks on all services
-6. Displays access URLs and next steps
+1. Verifies model file exists in `/workspace/models/`
+2. Installs llama-cpp-python with CUDA support
+3. Starts Mistral-7B server on port 8080
+4. Displays server status and access URLs
 
 **Usage:**
 ```bash
-./runpod_startup.sh
+./start_llm_server.sh
 ```
+
+### 3. `RUNPOD_QUICK_START.md` (Updated)
+**Purpose:** Complete streamlined setup guide with USB workflow
+
+**Changes from previous version:**
+- Removed Docker Hub image building steps
+- Added USB drive upload instructions
+- Simplified workflow to 5 easy steps
+- Added VS Code Remote-SSH guidance
+- Included SCP alternative for uploads
 
 ---
 
@@ -55,180 +64,113 @@ The storage plan from `plan for storage.txt` has been fully integrated into the 
 
 ### 1. `SIX_WEEK_EXECUTION_PLAN.md`
 **Changes:**
-- Added "Quick Start" section at the top
-- References `RUNPOD_QUICK_START.md`
-- Shows one-time preparation steps
-- Emphasizes time savings (3-5 min vs 60+ min)
+- Updated "Quick Start" section to reference USB workflow
+- Changed Task 1.3 from "Download Model" to "Upload Model from USB Drive"
+- Reduced setup time estimates (10-15 min vs 60+ min)
+- References USB_WORKFLOW.md for detailed instructions
 
 **Impact on timeline:**
 - Week 1 Day 1-2: Was 10-12 hours → Now 4-6 hours (setup time reduced)
 - More time for actual development tasks
 
 ### 2. `CLAUDE.md`
-**Changes:**
-- Added "Quick Start" section at top
-- New "Streamlined Runpod Startup (Recommended)" section
-- Kept manual setup instructions for reference
-- Clear signposting to automation strategy
-
-**Impact:**
-- Claude Code will prioritize automated approach
-- Manual fallback still available
+**No changes needed** - Already references RUNPOD_QUICK_START.md which has been updated
 
 ---
 
 ## Implementation Strategy
 
-### Three-Layer Architecture
+### USB Drive Workflow
 
 ```
 ┌─────────────────────────────────────────────┐
-│  Layer 1: Custom Runpod Template           │
-│  • Node.js 20                               │
-│  • Claude Code CLI                          │
-│  • Docker + Docker Compose                  │
-│  • Pre-pulled images (Milvus, etc.)        │
+│  Layer 1: USB Drive Storage                │
+│  • Mistral model (5.13 GB) on USB          │
+│  • Portable across machines                 │
+│  • One-time download to USB                 │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│  Layer 2: Pre-built Docker Images          │
-│  • YOUR_USERNAME/ai-mentor-llm:v1           │
-│    (Mistral model baked-in, 10GB)          │
-│  • Milvus stack images (cached)            │
+│  Layer 2: Upload to Runpod Instance        │
+│  • VS Code Remote-SSH upload (5-10 min)    │
+│  • OR SCP from command line                 │
+│  • Uploads to /workspace/models/            │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
 │  Layer 3: Automated Startup Script         │
-│  • runpod_startup.sh                        │
-│  • Orchestrates all services                │
-│  • Health checks + status display           │
+│  • start_llm_server.sh                      │
+│  • Installs dependencies                    │
+│  • Starts LLM server (port 8080)            │
 └─────────────────────────────────────────────┘
 ```
 
 ---
 
-## Docker Image Strategy
+## USB Drive Setup
 
-### LLM Server Image
-**Built locally, pushed to Docker Hub**
+### One-Time Preparation (Already Complete)
 
-```dockerfile
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
-# ... install Python, llama-cpp-python ...
-COPY mistral-7b-instruct-v0.2.q5_k_m.gguf /models/
-CMD ["python3", "-m", "llama_cpp.server", "--model", "/models/..."]
+You already have:
+- ✅ USB drive with 100GB+ capacity
+- ✅ Mistral-7B-Instruct-v0.2.Q5_K_M.gguf (5.13 GB) stored on USB drive
+- ✅ Model file verified and working
+
+### Files on USB Drive
+
+```
+D:\ (USB Drive)
+└── Mistral-7B-Instruct-v0.2.Q5_K_M.gguf (5.13 GB)
 ```
 
-**Key benefit:** Model (4.4GB) is inside the image. No download on pod startup.
-
-**Image size:** ~10GB
-**Pull time:** 2-3 minutes (vs 20-30 min download + setup)
-
-### Updated docker-compose.yml
-```yaml
-services:
-  # ... etcd, minio, milvus ...
-
-  llm:
-    image: YOUR_USERNAME/ai-mentor-llm:v1  # Pre-built image
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-```
+**Keep this USB drive safe** - it's your portable AI model storage!
 
 ---
 
 ## Execution Flow
 
-### One-Time Preparation (Do Once)
-
-**Step 1:** Build LLM Docker image with model
-```bash
-# On local machine
-cd ~/ai-mentor-docker-build
-wget https://huggingface.co/.../mistral-7b-instruct-v0.2.q5_k_m.gguf
-docker build -t YOUR_USERNAME/ai-mentor-llm:v1 .
-docker push YOUR_USERNAME/ai-mentor-llm:v1
-```
-
-**Step 2:** Create custom Runpod template
-```bash
-# On a fresh Runpod pod
-apt-get install -y nodejs npm docker.io curl git
-npm install -g @anthropic-ai/claude-code
-docker pull YOUR_USERNAME/ai-mentor-llm:v1
-docker pull milvusdb/milvus:v2.3.10
-# ... save as template in Runpod UI ...
-```
-
-**Time investment:** 2-3 hours
-**Benefit:** Never do this again
-
----
-
 ### Every-Time Startup (Repeat Always)
 
-**Step 1:** Launch pod from custom template
-- Select "ai-mentor-ready-v1" template
-- RTX A5000 GPU
-- Start pod
+**Step 1:** Start Runpod instance
+- Select RTX A5000 (24GB VRAM) or similar
+- Base image: `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404`
+- Note SSH connection details
 
-**Step 2:** Clone and run
+**Step 2:** Connect via VS Code Remote-SSH
+- Press `Ctrl+Shift+P` → "Remote-SSH: Connect to Host"
+- Enter: `root@[RUNPOD_IP]`
+- Wait for connection
+
+**Step 3:** Upload model from USB
 ```bash
-ssh root@<POD_IP>
+# On Runpod, create directory
+mkdir -p /workspace/models
+
+# On Windows: Copy from USB (D:) to C:\temp\
+# Then in VS Code: Upload C:\temp\*.gguf to /workspace/models/
+
+# Time: 5-10 minutes
+```
+
+**Step 4:** Clone repository
+```bash
 cd /workspace
 git clone https://github.com/YOUR_USERNAME/AIMentorProject.git
 cd AIMentorProject
-./runpod_startup.sh
+chmod +x start_llm_server.sh
 ```
 
-**Step 3:** Wait for startup
-- Milvus starts (90 sec)
-- LLM loads (120 sec)
-- Backend starts (10 sec)
-- Total: ~3-5 minutes
-
-**Step 4:** Access services
-- Backend API: `http://<POD_IP>:8000`
-- LLM Server: `http://<POD_IP>:8080`
-- Milvus: `<POD_IP>:19530`
-
----
-
-## Data Persistence
-
-### Challenge
-Runpod instances are ephemeral. Volumes are lost when pod stops.
-
-### Solutions
-
-#### Option A: Network Storage (Recommended if available)
+**Step 5:** Start LLM server
 ```bash
-# Link to persistent volume
-ln -s /runpod-volume/ai-mentor/volumes ./volumes
+./start_llm_server.sh
 ```
 
-#### Option B: Backup/Restore
-```bash
-# Before stopping pod
-tar -czf milvus-backup.tar.gz volumes/
-# Upload to S3/Drive
+The script will:
+- Verify model file exists
+- Install llama-cpp-python with CUDA support (~2-3 minutes)
+- Start Mistral-7B server on port 8080
 
-# On new pod
-# Download and extract
-tar -xzf milvus-backup.tar.gz
-```
-
-#### Option C: Re-ingest (Development)
-```bash
-# Keep course_materials in Git LFS or cloud storage
-# Re-run ingestion on new pod (takes 5-10 min for small datasets)
-python ingest.py --directory ../course_materials
-```
+**Total startup time: ~10-15 minutes** (mostly model upload)
 
 ---
 
@@ -237,22 +179,23 @@ python ingest.py --directory ../course_materials
 ### Original Plan
 **Day 1-2 (10-12 hours):**
 - Task 1.1: Project scaffolding (30 min)
-- Task 1.2: Runpod setup (1-2 hours) ← REPLACED
-- Task 1.3: Download model (20-30 min) ← ELIMINATED
-- Task 1.4: Backend Python env (30 min) ← AUTOMATED
-- Task 1.5: Milvus setup (1 hour) ← AUTOMATED
-- Task 1.6: LLM server (30 min) ← AUTOMATED
+- Task 1.2: Runpod setup (1-2 hours)
+- Task 1.3: Download model (60+ min) ← **REPLACED**
+- Task 1.4: Backend Python env (30 min)
+- Task 1.5: Milvus setup (1 hour)
+- Task 1.6: LLM server (30 min)
 - Task 1.7: Backend structure (30 min)
 
-### New Plan with Automation
+### New Plan with USB Workflow
 **Day 1-2 (4-6 hours):**
-- **One-time prep (first time only):** Build Docker images (2-3 hours)
-- **Every time:** Run `./runpod_startup.sh` (3-5 min)
+- **Upload model from USB:** 5-10 minutes ← **NEW**
 - Task 1.1: Project scaffolding (30 min)
+- Task 1.3: Start LLM server with script (2-3 min)
+- Task 1.4: Backend Python env (30 min)
+- Task 1.5: Milvus setup (1 hour)
 - Task 1.7: Backend structure (30 min)
-- **Saved time → More development**
 
-**Time reclaimed:** 6-8 hours per week
+**Time reclaimed:** ~55 minutes per session
 **Use for:** Testing, debugging, code quality, documentation
 
 ---
@@ -260,79 +203,158 @@ python ingest.py --directory ../course_materials
 ## Benefits Summary
 
 ### Speed
-- **90% reduction** in setup time
-- From 60 min → 5 min per session
+- **85% reduction** in model setup time
+- From 60 min → 10 min per session (50 minutes saved!)
+
+### Portability
+- USB drive works with any Runpod instance
+- No datacenter dependency
+- Model always available offline
 
 ### Reliability
-- Automated process eliminates human error
-- Consistent environment every time
-- Health checks ensure all services running
+- No dependency on HuggingFace availability
+- Consistent upload speed
+- Simple, proven workflow
 
 ### Developer Experience
-- Less cognitive load (no need to remember steps)
-- Can focus on development, not devops
+- Less waiting time = more development time
 - Easy to iterate (stop/start pods frequently)
+- Portable solution that works anywhere
 
 ### Cost
-- Faster startup = less billable time
+- Faster startup = less billable time on Runpod
 - Can confidently stop pods between sessions
 - Runpod charges by the minute
+
+---
+
+## Comparison: Old vs New Workflow
+
+### Old Workflow (HuggingFace Download)
+1. Start Runpod instance
+2. Download model from HuggingFace: **60+ minutes** ⏳
+3. Install llama-cpp-python: 2-3 minutes
+4. Start server: 10 seconds
+- **Total: ~65 minutes**
+
+### New Workflow (USB Upload)
+1. Start Runpod instance
+2. Upload model from USB: **5-10 minutes** ✅
+3. Clone repository: 30 seconds
+4. Run `./start_llm_server.sh`: 2-3 minutes
+5. Server starts: 10 seconds
+- **Total: ~10-15 minutes**
+
+**Time saved: 50+ minutes per instance!**
+
+---
+
+## Data Persistence
+
+### Challenge
+Runpod instances are ephemeral. Volumes are lost when pod stops (unless you have network storage).
+
+### Solutions
+
+#### Option A: Backup Milvus Data
+```bash
+# Before stopping pod
+cd /workspace/AIMentorProject
+tar -czf milvus-backup-$(date +%Y%m%d).tar.gz volumes/
+# Download to local machine via VS Code
+
+# On new pod
+# Upload backup via VS Code and extract
+tar -xzf milvus-backup-20241016.tar.gz
+```
+
+#### Option B: Re-ingest Documents (Development)
+```bash
+# Keep course_materials in Git or on USB drive
+# Re-run ingestion on new pod (5-10 min for small datasets)
+python ingest.py --directory ../course_materials
+```
+
+#### Option C: Network Storage (if available)
+```bash
+# Link to persistent volume
+ln -s /runpod-volume/ai-mentor/volumes ./volumes
+```
+
+---
+
+## Service Stack Overview
+
+### LLM Server (Port 8080)
+- Started by `./start_llm_server.sh`
+- OpenAI-compatible API at `http://localhost:8080/v1`
+- Model: Mistral-7B-Instruct-v0.2 Q5_K_M
+- GPU: All layers offloaded to RTX A5000
+
+### Milvus Vector Database (Port 19530)
+- Started by `docker-compose up -d`
+- Services: etcd, minio, milvus-standalone
+- Stores document embeddings
+- Persistent volumes in `./volumes/`
+
+### Backend API (Port 8000)
+- FastAPI application
+- Endpoints: `/api/chat`, `/ws/chat`
+- Connects to LLM server and Milvus
+- Started with Uvicorn
 
 ---
 
 ## Next Steps
 
 ### Before Week 1
-1. ✅ Complete one-time Docker image build
-2. ✅ Push image to Docker Hub
-3. ✅ Create custom Runpod template
-4. ✅ Test `./runpod_startup.sh` on fresh pod
+1. ✅ Model stored on USB drive (complete)
+2. ✅ USB_WORKFLOW.md created
+3. ✅ start_llm_server.sh created
+4. ✅ Documentation updated
 
 ### Week 1 Day 1
-1. Launch pod from custom template
-2. Run startup script
-3. Begin Task 1.1 (project scaffolding)
-4. Continue with Week 1 tasks
+1. Start Runpod instance
+2. Upload model from USB (10 min)
+3. Run startup script
+4. Begin Task 1.1 (project scaffolding)
+5. Continue with Week 1 tasks
 
 ### Week 2+
-1. Continue using automated startup
-2. Backup Milvus volumes regularly
-3. Update Docker image if needed (model changes)
-4. Iterate on development
+1. Continue using USB upload workflow
+2. Backup Milvus volumes regularly (if needed)
+3. Iterate on development
+4. Test with sample documents
 
 ---
 
 ## Troubleshooting
 
-### Startup script fails
-```bash
-# Check Docker daemon
-systemctl status docker
+### Model upload is slow
+**Solution:** Use SCP with compression
+```powershell
+scp -C "C:\temp\Mistral-7B-Instruct-v0.2.Q5_K_M.gguf" root@[RUNPOD_IP]:/workspace/models/
+```
 
-# Check if ports are free
+### llama-cpp-python won't install
+**Solution:** Reinstall with explicit CUDA support
+```bash
+CMAKE_ARGS="-DGGML_CUDA=on" pip install --no-cache-dir --force-reinstall "llama-cpp-python[server]"
+```
+
+### Server won't start - port in use
+**Solution:** Kill existing process
+```bash
 lsof -i :8080
-lsof -i :8000
-
-# View tmux session
-tmux attach -t api
+kill -9 [PID]
+./start_llm_server.sh
 ```
 
-### LLM not responding
+### Model file not found
+**Solution:** Verify file location
 ```bash
-# Check container logs
-docker logs ai-mentor-llm
-
-# Restart container
-docker restart ai-mentor-llm
-```
-
-### Milvus connection errors
-```bash
-# Check all containers
-docker-compose ps
-
-# Restart Milvus stack
-docker-compose restart
+ls -lh /workspace/models/
+# Should show: Mistral-7B-Instruct-v0.2.Q5_K_M.gguf
 ```
 
 ---
@@ -341,39 +363,60 @@ docker-compose restart
 
 | File | Purpose | When to Read |
 |------|---------|--------------|
-| `RUNPOD_QUICK_START.md` | Complete setup guide | Before Week 1 |
-| `runpod_startup.sh` | Automation script | Run every startup |
+| `USB_WORKFLOW.md` | Complete USB workflow guide | Before Week 1 |
+| `start_llm_server.sh` | LLM server startup script | Run every startup |
+| `RUNPOD_QUICK_START.md` | Streamlined Runpod setup | Before Week 1 |
 | `SIX_WEEK_EXECUTION_PLAN.md` | Full 6-week plan | Week-by-week guidance |
 | `CLAUDE.md` | Project overview | Claude Code reference |
-| `plan for storage.txt` | Original problem statement | Context/background |
 | `WEEKS_1-2_SUMMARY.md` (this file) | Implementation summary | Quick reference |
 
 ---
 
 ## Success Criteria
 
-✅ You've successfully integrated the storage plan if:
+✅ You've successfully set up the USB workflow if:
 
-1. **One-time prep completed:**
-   - Docker image built and pushed
-   - Custom Runpod template created
-   - Images pre-pulled and cached
+1. **Model on USB drive:**
+   - Mistral-7B-Instruct-v0.2.Q5_K_M.gguf (5.13 GB)
+   - USB drive stored safely
+   - Model verified and working
 
-2. **Startup works reliably:**
-   - `./runpod_startup.sh` runs without errors
-   - All services healthy in 3-5 minutes
-   - Can access Backend API and LLM server
+2. **Upload works reliably:**
+   - Can upload model to Runpod in 5-10 minutes
+   - VS Code Remote-SSH or SCP working
+   - File verification passes on Runpod
 
-3. **Time saved:**
-   - Startup time reduced from 60+ min to 5 min
-   - No manual Node.js/Claude installation needed
-   - No model download delay
+3. **Startup works:**
+   - `./start_llm_server.sh` runs without errors
+   - LLM server accessible on port 8080
+   - Can query server with curl/API calls
 
-4. **Ready for development:**
+4. **Time saved:**
+   - Startup time reduced from 60+ min to 10-15 min
+   - No HuggingFace download needed
+   - Portable across Runpod instances
+
+5. **Ready for development:**
    - Can quickly iterate (stop/start pods)
    - Data persistence strategy in place
    - Documentation updated and clear
 
 ---
 
-**Status:** ✅ All tasks completed. Ready to begin Week 1 development with streamlined setup.
+## Key Differences from Previous Approach
+
+### ❌ Old: Docker Hub Approach (Abandoned)
+- Build Docker image with model baked-in
+- Push 10GB image to Docker Hub (20-40 min upload)
+- Pull image on Runpod (2-3 min download)
+- **Issues:** Build failures, disk space problems, complexity
+
+### ✅ New: USB Drive Approach (Current)
+- Store model on portable USB drive
+- Upload from USB to Runpod (5-10 min)
+- Simple script starts server
+- **Benefits:** Portable, simple, reliable, fast
+
+---
+
+**Status:** ✅ All setup complete. USB workflow ready. Begin Week 1 development!
