@@ -25,8 +25,14 @@ fi
 
 echo "✓ Model file found: $MODEL_PATH"
 
-# Install llama-cpp-python with CUDA support if not already installed
+# Activate virtual environment
 echo ""
+echo "Activating Python virtual environment..."
+cd /root/AIMentorProject/backend
+source venv/bin/activate
+cd /root/AIMentorProject
+
+# Install llama-cpp-python with CUDA support if not already installed
 echo "Installing llama-cpp-python with CUDA support..."
 pip show llama-cpp-python > /dev/null 2>&1
 if [ $? -eq 0 ]; then
