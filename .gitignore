@@ -181,3 +181,4 @@ docs/.doctrees/
 # Uncomment the next line if you don't want to commit PDFs to version control
 # course_materials/
 # *.pdf
+course_materials/*.pdf
