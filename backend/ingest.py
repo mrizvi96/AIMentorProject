@@ -9,11 +9,10 @@ from typing import List
 import sys
 
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
-from llama_index.vector_stores.milvus import MilvusVectorStore
+from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.node_parser import SentenceSplitter
-from milvus import default_server
-from pymilvus import utility, connections
+import chromadb
 
 from app.core.config import settings
 
@@ -24,23 +23,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global ChromaDB client instance
+chroma_client = None
 
-def connect_to_milvus():
-    """Connect to Milvus Lite (file-based, no Docker needed)"""
+def prepare_chromadb():
+    """Prepare ChromaDB client (file-based, no server needed)"""
+    global chroma_client
     try:
-        logger.info(f"Using Milvus Lite at {settings.milvus_uri}")
-
-        # Start Milvus Lite server if not already running
-        default_server.start()
-
-        # Connect to local Milvus Lite instance
-        connections.connect(
-            alias="default",
-            uri=settings.milvus_uri
-        )
-        logger.info("✓ Connected to Milvus Lite")
+        logger.info(f"Using ChromaDB with database at {settings.chroma_db_path}")
+        chroma_client = chromadb.PersistentClient(path=settings.chroma_db_path)
+        logger.info("✓ ChromaDB client prepared")
     except Exception as e:
-        logger.error(f"Failed to connect to Milvus Lite: {e}")
+        logger.error(f"Failed to prepare ChromaDB client: {e}")
         sys.exit(1)
 
 
@@ -94,29 +88,27 @@ def setup_embedding_model():
 
 
 def create_vector_store(overwrite: bool = False):
-    """Create or connect to Milvus vector store"""
+    """Create or connect to ChromaDB vector store"""
+    global chroma_client
+    if chroma_client is None:
+        logger.error("ChromaDB client not initialized. Call prepare_chromadb() first.")
+        sys.exit(1)
+
     try:
-        # Check if collection exists
-        collection_exists = utility.has_collection(settings.milvus_collection_name)
+        collection_name = settings.chroma_collection_name
 
-        if collection_exists and not overwrite:
-            logger.info(f"Collection '{settings.milvus_collection_name}' already exists")
-            logger.info("Use --overwrite flag to replace existing data")
-            response = input("Continue and add to existing collection? (y/n): ")
-            if response.lower() != 'y':
-                logger.info("Ingestion cancelled")
-                sys.exit(0)
+        if overwrite:
+            logger.warning(f"Overwrite mode: will delete existing collection '{collection_name}' if it exists.")
+            try:
+                chroma_client.delete_collection(name=collection_name)
+                logger.info(f"Existing collection '{collection_name}' deleted.")
+            except Exception as e:
+                logger.warning(f"Could not delete collection '{collection_name}' (might not exist): {e}")
 
-        if collection_exists and overwrite:
-            logger.warning(f"Overwriting collection '{settings.milvus_collection_name}'")
+        logger.info(f"Creating/connecting to ChromaDB collection '{collection_name}'...")
+        collection = chroma_client.get_or_create_collection(name=collection_name)
 
-        logger.info("Creating vector store...")
-        vector_store = MilvusVectorStore(
-            uri=settings.milvus_uri,
-            collection_name=settings.milvus_collection_name,
-            dim=settings.embedding_dimension,
-            overwrite=overwrite
-        )
+        vector_store = ChromaVectorStore(chroma_collection=collection)
         logger.info("✓ Vector store ready")
         return vector_store
 
@@ -148,7 +140,7 @@ def ingest_documents(documents: List, vector_store, embed_model):
         logger.info(f"Created {len(nodes)} chunks from {len(documents)} documents")
 
         # Create index and ingest
-        logger.info("Generating embeddings and storing in Milvus...")
+        logger.info("Generating embeddings and storing in ChromaDB...")
         logger.info("This may take several minutes depending on document size...")
 
         index = VectorStoreIndex.from_vector_store(
@@ -164,7 +156,7 @@ def ingest_documents(documents: List, vector_store, embed_model):
         logger.info("✓ Document ingestion complete!")
         logger.info(f"Total documents: {len(documents)}")
         logger.info(f"Total chunks: {len(nodes)}")
-        logger.info(f"Collection: {settings.milvus_collection_name}")
+        logger.info(f"Collection: {settings.chroma_collection_name}")
 
     except Exception as e:
         logger.error(f"Failed to ingest documents: {e}")
@@ -174,7 +166,7 @@ def ingest_documents(documents: List, vector_store, embed_model):
 def main():
     """Main ingestion function"""
     parser = argparse.ArgumentParser(
-        description="Ingest PDF documents into Milvus vector store"
+        description="Ingest PDF documents into ChromaDB vector store"
     )
     parser.add_argument(
         "--directory",
@@ -194,8 +186,8 @@ def main():
     logger.info("AI Mentor - Document Ingestion")
     logger.info("=" * 60)
 
-    # Step 1: Connect to Milvus
-    connect_to_milvus()
+    # Step 1: Prepare ChromaDB
+    prepare_chromadb()
 
     # Step 2: Load documents
     documents = load_documents(args.directory)

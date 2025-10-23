@@ -5,10 +5,11 @@ Handles document retrieval and response generation using LlamaIndex
 from typing import List, Dict, Optional
 import logging
 from llama_index.core import VectorStoreIndex, ServiceContext, Settings
-from llama_index.vector_stores.milvus import MilvusVectorStore
+from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.core.schema import Document, NodeWithScore
+import chromadb
 
 from ..core.config import settings
 
@@ -36,9 +37,6 @@ class RAGService:
         try:
             logger.info("Initializing RAG service...")
 
-            # Milvus Lite uses file-based storage, no connection needed
-            logger.info(f"Using Milvus Lite at {settings.milvus_uri}")
-
             # Initialize embedding model (HuggingFace sentence-transformers)
             logger.info(f"Loading embedding model: {settings.embedding_model_name}")
             embed_model = HuggingFaceEmbedding(
@@ -61,13 +59,11 @@ class RAGService:
             Settings.chunk_size = settings.chunk_size
             Settings.chunk_overlap = settings.chunk_overlap
 
-            # Initialize Milvus Lite vector store (file-based)
-            self.vector_store = MilvusVectorStore(
-                uri=settings.milvus_uri,
-                collection_name=settings.milvus_collection_name,
-                dim=settings.embedding_dimension,
-                overwrite=False  # Don't delete existing data
-            )
+            # Initialize ChromaDB client and vector store
+            logger.info(f"Connecting to ChromaDB at {settings.chroma_db_path}")
+            chroma_client = chromadb.PersistentClient(path=settings.chroma_db_path)
+            chroma_collection = chroma_client.get_or_create_collection(name=settings.chroma_collection_name)
+            self.vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 
             # Create index from vector store
             logger.info("Creating vector store index...")
@@ -153,7 +149,7 @@ Answer: """
         """Get statistics about the RAG service"""
         return {
             'initialized': self._initialized,
-            'collection_name': settings.milvus_collection_name,
+            'collection_name': settings.chroma_collection_name,
             'embedding_model': settings.embedding_model_name,
             'llm_endpoint': settings.llm_base_url,
         }
