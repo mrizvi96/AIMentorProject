@@ -9,7 +9,6 @@ from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.core.schema import Document, NodeWithScore
-from pymilvus import connections
 
 from ..core.config import settings
 
@@ -37,13 +36,8 @@ class RAGService:
         try:
             logger.info("Initializing RAG service...")
 
-            # Connect to Milvus
-            logger.info(f"Connecting to Milvus at {settings.milvus_host}:{settings.milvus_port}")
-            connections.connect(
-                alias="default",
-                host=settings.milvus_host,
-                port=settings.milvus_port
-            )
+            # Milvus Lite uses file-based storage, no connection needed
+            logger.info(f"Using Milvus Lite at {settings.milvus_uri}")
 
             # Initialize embedding model (HuggingFace sentence-transformers)
             logger.info(f"Loading embedding model: {settings.embedding_model_name}")
@@ -67,10 +61,9 @@ class RAGService:
             Settings.chunk_size = settings.chunk_size
             Settings.chunk_overlap = settings.chunk_overlap
 
-            # Initialize Milvus vector store
+            # Initialize Milvus Lite vector store (file-based)
             self.vector_store = MilvusVectorStore(
-                host=settings.milvus_host,
-                port=settings.milvus_port,
+                uri=settings.milvus_uri,
                 collection_name=settings.milvus_collection_name,
                 dim=settings.embedding_dimension,
                 overwrite=False  # Don't delete existing data

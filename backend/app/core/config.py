@@ -25,9 +25,8 @@ class Settings(BaseSettings):
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
 
-    # Milvus Configuration
-    milvus_host: str = "localhost"
-    milvus_port: str = "19530"
+    # Milvus Lite Configuration (file-based, no Docker needed)
+    milvus_uri: str = "./milvus_data/ai_mentor.db"  # Local SQLite-based storage
     milvus_collection_name: str = "course_materials"
 
     # RAG Configuration

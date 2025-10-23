@@ -102,6 +102,7 @@ models/*.bin
 milvus/
 etcd/
 minio/
+milvus_data/  # Milvus Lite data directory
 
 # Logs
 logs/

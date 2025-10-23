@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 Quick Start
 
-**New to this project?** Start with [RUNPOD_QUICK_START.md](./RUNPOD_QUICK_START.md) for streamlined Runpod setup that eliminates repetitive configuration.
+**New to this project?** Start with [RUNPOD_MILVUS_LITE_GUIDE.md](./RUNPOD_MILVUS_LITE_GUIDE.md) for complete Runpod deployment guide using Milvus Lite.
 
-**TL;DR:** Run `./runpod_startup.sh` to start all services in ~3-5 minutes.
+**TL;DR:** Run `./runpod_simple_startup.sh` to download model and start all services (~35 min first run, ~5 min subsequent runs).
 
 ---
 
@@ -22,9 +22,9 @@ AI Mentor is a modular, scalable educational platform for computer science stude
 - OS: Ubuntu 24.04
 
 **Key Technologies:**
-- Backend: FastAPI + Python (llama.cpp, LlamaIndex, LangGraph, Milvus, PyMuPDF)
+- Backend: FastAPI + Python (llama.cpp, LlamaIndex, LangGraph, Milvus Lite, PyMuPDF)
 - Frontend: SvelteKit + TypeScript
-- Database: Milvus vector database (Docker)
+- Database: Milvus Lite (file-based vector database, no Docker needed)
 - LLM: Local quantized models via llama.cpp (e.g., Mistral-7B-Instruct Q5_K_M)
 
 ## Architecture
@@ -46,7 +46,7 @@ This cyclical architecture (retrieve → grade → rewrite → retrieve → gene
 - Base container: runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404 (CUDA 12.8.1, PyTorch 2.8.0, Ubuntu 24.04)
 - Local machine serves as thin development client (VS Code Remote-SSH)
 - llama.cpp runs as standalone OpenAI-compatible API server (decoupled from FastAPI)
-- Milvus, etcd, and MinIO run in Docker containers on Runpod instance
+- Milvus Lite runs embedded (file-based database in `backend/milvus_data/`, no Docker needed)
 
 ### Backend Structure
 

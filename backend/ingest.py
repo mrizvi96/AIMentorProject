@@ -12,7 +12,8 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.node_parser import SentenceSplitter
-from pymilvus import connections, utility
+from milvus import default_server
+from pymilvus import utility, connections
 
 from app.core.config import settings
 
@@ -25,18 +26,21 @@ logger = logging.getLogger(__name__)
 
 
 def connect_to_milvus():
-    """Connect to Milvus vector database"""
+    """Connect to Milvus Lite (file-based, no Docker needed)"""
     try:
-        logger.info(f"Connecting to Milvus at {settings.milvus_host}:{settings.milvus_port}...")
+        logger.info(f"Using Milvus Lite at {settings.milvus_uri}")
+
+        # Start Milvus Lite server if not already running
+        default_server.start()
+
+        # Connect to local Milvus Lite instance
         connections.connect(
             alias="default",
-            host=settings.milvus_host,
-            port=settings.milvus_port
+            uri=settings.milvus_uri
         )
-        logger.info("✓ Connected to Milvus")
+        logger.info("✓ Connected to Milvus Lite")
     except Exception as e:
-        logger.error(f"Failed to connect to Milvus: {e}")
-        logger.error("Make sure Milvus is running: docker-compose up -d")
+        logger.error(f"Failed to connect to Milvus Lite: {e}")
         sys.exit(1)
 
 
@@ -108,8 +112,7 @@ def create_vector_store(overwrite: bool = False):
 
         logger.info("Creating vector store...")
         vector_store = MilvusVectorStore(
-            host=settings.milvus_host,
-            port=settings.milvus_port,
+            uri=settings.milvus_uri,
             collection_name=settings.milvus_collection_name,
             dim=settings.embedding_dimension,
             overwrite=overwrite
