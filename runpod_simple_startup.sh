@@ -1,6 +1,6 @@
 #!/bin/bash
 # Simplified Runpod Startup Script - No Docker Required!
-# Uses Milvus Lite (file-based) instead of Docker-based Milvus
+# Uses ChromaDB (file-based) instead of Docker-based Milvus
 
 set -e  # Exit on error
 
@@ -12,7 +12,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo "================================================"
-echo -e "${BLUE}🚀 AI Mentor Runpod Startup (Milvus Lite)${NC}"
+echo -e "${BLUE}🚀 AI Mentor Runpod Startup (ChromaDB)${NC}"
 echo "================================================"
 echo ""
 
@@ -169,7 +169,7 @@ echo ""
 echo "📌 Service URLs (Internal):"
 echo "   • Backend API:  http://localhost:8000"
 echo "   • LLM Server:   http://localhost:8080"
-echo "   • Milvus Lite:  ./backend/milvus_data/ai_mentor.db (file-based)"
+echo "   • ChromaDB:     ./backend/chroma_db/ (file-based)"
 echo ""
 echo "🔧 Useful Commands:"
 echo "   • View LLM logs:       tmux attach -t llm"
@@ -185,7 +185,7 @@ echo ""
 echo "   ${YELLOW}1. Ingest course materials (first time only):${NC}"
 echo "      cd backend && source venv/bin/activate"
 echo "      python ingest.py --directory ../course_materials/"
-echo "      ${BLUE}Note: This creates the Milvus Lite database file${NC}"
+echo "      ${BLUE}Note: This creates the ChromaDB database${NC}"
 echo ""
 echo "   ${YELLOW}2. Test the backend:${NC}"
 echo "      curl -X POST http://localhost:8000/api/chat \\"
@@ -200,13 +200,13 @@ echo "      npm install"
 echo "      npm run dev"
 echo ""
 echo "   ${YELLOW}4. Preserve data before stopping pod:${NC}"
-echo "      # Commit Milvus database to Git (if small enough)"
+echo "      # Commit ChromaDB database to Git (if small enough)"
 echo "      cd backend"
-echo "      git add milvus_data/"
+echo "      git add chroma_db/"
 echo "      git commit -m \"Add ingested course materials\""
 echo "      git push"
 echo "      ${BLUE}OR backup manually:${NC}"
-echo "      tar -czf milvus-backup-\$(date +%Y%m%d).tar.gz backend/milvus_data/"
+echo "      tar -czf chroma-backup-\$(date +%Y%m%d).tar.gz backend/chroma_db/"
 echo "      # Download via VS Code or SCP"
 echo ""
 echo "================================================"

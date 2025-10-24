@@ -25,9 +25,9 @@ class Settings(BaseSettings):
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
 
-        # ChromaDB Configuration (file-based, no server needed)
-        chroma_db_path: str = "/root/AIMentorProject-1/backend/chroma_db"  # Local persistent storage
-        chroma_collection_name: str = "course_materials" 
+    # ChromaDB Configuration (file-based, no server needed)
+    chroma_db_path: str = "./chroma_db"  # Relative to backend directory
+    chroma_collection_name: str = "course_materials" 
     # RAG Configuration
     chunk_size: int = 512
     chunk_overlap: int = 50

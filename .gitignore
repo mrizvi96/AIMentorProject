@@ -103,6 +103,11 @@ milvus/
 etcd/
 minio/
 milvus_data/  # Milvus Lite data directory
+chroma_db/    # ChromaDB data directory
+
+# Authentication files
+auth_link.txt
+auth2_link.txt
 
 # Logs
 logs/
