@@ -172,9 +172,12 @@ Response:"""
 
         try:
             # Call LLM for grading
-            response = self.llm.complete(grading_prompt)
+            response = self.llm.stream_chat(grading_prompt)
 
-            decision = response.text.strip().lower()
+            decision = ""
+            for chunk in response:
+                decision += chunk.delta
+            decision = decision.strip().lower()
 
             # Parse yes/no (handle variations)
             if "yes" in decision:
@@ -209,9 +212,12 @@ Your task: Rewrite this question to improve retrieval results. Make it more spec
 Rewritten question:"""
 
         try:
-            response = self.llm.complete(rewrite_prompt)
+            response = self.llm.stream_chat(rewrite_prompt)
 
-            rewritten = response.text.strip()
+            rewritten = ""
+            for chunk in response:
+                rewritten += chunk.delta
+            rewritten = rewritten.strip()
             state["rewritten_question"] = rewritten
             state["retry_count"] += 1
 
@@ -255,9 +261,12 @@ Instructions:
 Answer:"""
 
         try:
-            response = self.llm.complete(generation_prompt)
+            response = self.llm.stream_chat(generation_prompt)
 
-            state["generation"] = response.text.strip()
+            generation = ""
+            for chunk in response:
+                generation += chunk.delta
+            state["generation"] = generation.strip()
 
             logger.info(f"  Generated {len(state['generation'])} character answer")
 
@@ -361,11 +370,135 @@ Answer:"""
             traceback.print_exc()
             raise
 
+    # === STREAMING API ===
+
+    async def query_stream(self, question: str, max_retries: int = 2):
+        """
+        Query with streaming support - yields tokens as they're generated
+
+        Yields:
+            Dict with type ("token", "metadata", "workflow") and content
+        """
+        logger.info(f"\n{'='*60}")
+        logger.info(f"STREAMING AGENTIC RAG QUERY: {question[:100]}...")
+        logger.info(f"{'='*60}")
+
+        # Initialize state (same as non-streaming)
+        initial_state: AgentState = {
+            "question": question,
+            "rewritten_question": None,
+            "documents": [],
+            "document_scores": [],
+            "generation": "",
+            "messages": [],
+            "retry_count": 0,
+            "max_retries": max_retries,
+            "relevance_decision": None,
+            "workflow_path": []
+        }
+
+        try:
+            # Stream events from the graph
+            async for event in self.graph.astream_events(initial_state, version="v1"):
+                event_type = event.get("event")
+                event_name = event.get("name", "")
+                event_data = event.get("data", {})
+
+                # 1. Workflow updates (node transitions)
+                if event_type == "on_chain_start":
+                    node_name = event_name
+                    logger.info(f"[STREAM] Entering node: {node_name}")
+                    yield {
+                        "type": "workflow",
+                        "node": node_name,
+                        "status": "start"
+                    }
+
+                elif event_type == "on_chain_end":
+                    node_name = event_name
+                    logger.info(f"[STREAM] Exiting node: {node_name}")
+                    yield {
+                        "type": "workflow",
+                        "node": node_name,
+                        "status": "end"
+                    }
+
+                # 2. LLM tokens (only from generate node)
+                elif event_type == "on_chat_model_stream":
+                    # Check if this is from the generate node
+                    # (we don't want to stream grading or rewrite tokens to user)
+                    chunk = event_data.get("chunk", {})
+                    content = ""
+
+                    # Handle different chunk formats
+                    if hasattr(chunk, "delta"):
+                        content = chunk.delta
+                    elif isinstance(chunk, dict) and "delta" in chunk:
+                        content = chunk["delta"]
+
+                    if content:
+                        yield {
+                            "type": "token",
+                            "content": content
+                        }
+
+                # 3. Metadata (retrieval results, grading decisions)
+                elif event_type == "on_chain_end" and "output" in event_data:
+                    output = event_data["output"]
+
+                    # Send metadata about retrieval
+                    if event_name == "retrieve" and "documents" in output:
+                        yield {
+                            "type": "metadata",
+                            "event": "retrieval_complete",
+                            "num_documents": len(output.get("documents", []))
+                        }
+
+                    # Send metadata about grading
+                    elif event_name == "grade_documents" and "relevance_decision" in output:
+                        yield {
+                            "type": "metadata",
+                            "event": "grading_complete",
+                            "decision": output["relevance_decision"]
+                        }
+
+                    # Send metadata about rewrite
+                    elif event_name == "rewrite_query" and "rewritten_question" in output:
+                        yield {
+                            "type": "metadata",
+                            "event": "query_rewritten",
+                            "original": output["question"],
+                            "rewritten": output["rewritten_question"]
+                        }
+
+            # Final metadata
+            logger.info(f"[STREAM] Workflow complete")
+            yield {
+                "type": "complete",
+                "message": "Generation finished"
+            }
+
+        except Exception as e:
+            logger.error(f"Streaming failed: {e}")
+            import traceback
+            traceback.print_exc()
+            yield {
+                "type": "error",
+                "error": str(e)
+            }
+
 # Global singleton
 _agentic_rag_service = None
 
 def get_agentic_rag_service() -> AgenticRAGService:
     """Get or create the global agentic RAG service"""
+    global _agentic_rag_service
+    if _agentic_rag_service is None:
+        _agentic_rag_service = AgenticRAGService()
+    return _agentic_rag_service
+
+async def get_agentic_rag_service_async() -> AgenticRAGService:
+    """Get or create the global agentic RAG service (async version)"""
     global _agentic_rag_service
     if _agentic_rag_service is None:
         _agentic_rag_service = AgenticRAGService()

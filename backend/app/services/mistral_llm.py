@@ -49,4 +49,33 @@ class MistralLLM(CustomLLM):
     @llm_completion_callback()
     def stream_complete(self, prompt: str, **kwargs: Any):
         """Streaming not implemented for now"""
-        return self.complete(prompt, **kwargs)
+        response = requests.post(
+            f"{self.server_url}/v1/completions",
+            json={
+                "prompt": prompt,
+                "max_tokens": kwargs.get("max_tokens", self.num_output),
+                "temperature": kwargs.get("temperature", self.temperature),
+                "stop": kwargs.get("stop", ["\n\n"]),
+                "stream": True,
+            },
+            timeout=300,
+            stream=True,
+        )
+        response.raise_for_status()
+        for line in response.iter_lines():
+            if line:
+                decoded_line = line.decode('utf-8')
+                if decoded_line.startswith('data: '):
+                    json_data = decoded_line[6:]
+                    if json_data != "[DONE]":
+                        data = json.loads(json_data)
+                        yield CompletionResponse(
+                            text=data["choices"][0]["text"],
+                            raw=data,
+                        )
+
+    @llm_completion_callback()
+    def stream_chat(self, messages, **kwargs: Any):
+        """Streaming chat endpoint"""
+        prompt = self.messages_to_prompt(messages)
+        return self.stream_complete(prompt, **kwargs)
