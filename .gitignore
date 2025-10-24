@@ -188,3 +188,4 @@ docs/.doctrees/
 # course_materials/
 # *.pdf
 course_materials/
+backend/chroma_db/

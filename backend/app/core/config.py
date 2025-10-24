@@ -29,13 +29,13 @@ class Settings(BaseSettings):
     chroma_db_path: str = "./chroma_db"  # Relative to backend directory
     chroma_collection_name: str = "course_materials" 
     # RAG Configuration
-    chunk_size: int = 512
-    chunk_overlap: int = 50
-    top_k_retrieval: int = 3
+    chunk_size: int = 256
+    chunk_overlap: int = 25
+    top_k_retrieval: int = 1
     similarity_threshold: float = 0.7
 
     # File paths
-    course_materials_dir: str = "./course_materials"
+    course_materials_dir: str = "../course_materials"
     models_dir: str = "/workspace/models"
 
     class Config:

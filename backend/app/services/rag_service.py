@@ -4,10 +4,10 @@ Handles document retrieval and response generation using LlamaIndex
 """
 from typing import List, Dict, Optional
 import logging
-from llama_index.core import VectorStoreIndex, ServiceContext, Settings
+from llama_index.core import VectorStoreIndex, ServiceContext, Settings, PromptTemplate
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.llms.openai import OpenAI
+from .mistral_llm import MistralLLM
 from llama_index.core.schema import Document, NodeWithScore
 import chromadb
 
@@ -43,14 +43,12 @@ class RAGService:
                 model_name=settings.embedding_model_name
             )
 
-            # Initialize LLM (OpenAI-compatible llama.cpp server)
-            logger.info(f"Connecting to LLM server at {settings.llm_base_url}")
-            llm = OpenAI(
-                api_base=settings.llm_base_url,
-                api_key="dummy",  # llama.cpp server doesn't need real key
-                model=settings.llm_model_name,
+            # Initialize LLM (llama.cpp server)
+            logger.info(f"Connecting to Mistral-7B via llama.cpp server at {settings.llm_base_url}")
+            llm = MistralLLM(
+                server_url=settings.llm_base_url.replace("/v1", ""),  # Remove /v1 suffix
                 temperature=settings.llm_temperature,
-                max_tokens=settings.llm_max_tokens,
+                num_output=settings.llm_max_tokens,
             )
 
             # Configure LlamaIndex Settings (global configuration)
@@ -84,9 +82,9 @@ class RAGService:
             logger.error(f"Failed to initialize RAG service: {e}")
             raise
 
-    def _get_qa_template(self) -> str:
+    def _get_qa_template(self) -> PromptTemplate:
         """Get the system prompt template for QA"""
-        return """You are an expert Computer Science mentor helping students understand complex topics.
+        return PromptTemplate("""You are an expert Computer Science mentor helping students understand complex topics.
 
 Context information from course materials:
 {context_str}
@@ -101,7 +99,7 @@ Instructions:
 3. Cite specific parts of the context you used
 4. If unsure, acknowledge limitations
 
-Answer: """
+Answer: """)
 
     async def query(self, question: str) -> Dict:
         """
