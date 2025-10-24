@@ -1,123 +1,130 @@
 """
-Chat API Router
-Provides REST and WebSocket endpoints for chat interactions
+Chat API Endpoints
+Simple RAG endpoints for Week 1 MVP.
 """
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import logging
-import json
 
-from ..services.rag_service import rag_service
+from app.services.rag_service import rag_service
+from app.services.agentic_rag import get_agentic_rag_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
-
-# Request/Response Models
+# Pydantic models
 class ChatRequest(BaseModel):
     """Request model for chat endpoint"""
-    message: str
-    conversation_id: Optional[str] = "default"
+    message: str = Field(..., min_length=1, max_length=2000, description="User's question")
+    conversation_id: Optional[str] = Field(default="default", description="Conversation ID for tracking")
 
-
-class SourceDocument(BaseModel):
-    """Source document reference"""
+class Source(BaseModel):
+    """Source document information"""
     text: str
     score: float
-    metadata: Dict
-
+    metadata: dict
 
 class ChatResponse(BaseModel):
     """Response model for chat endpoint"""
-    response: str
-    sources: List[SourceDocument]
-    conversation_id: str
-
+    answer: str
+    sources: List[Source]
+    question: str
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Process a chat message and return AI mentor response
+    Handle chat requests using Simple RAG (non-agentic)
 
-    This is a simple REST endpoint (non-streaming).
-    WebSocket streaming will be added in Phase 2.
+    This is the Week 1 MVP endpoint. Will be enhanced with LangGraph in Week 3.
     """
     try:
-        logger.info(f"Received chat request: {request.message[:50]}...")
+        logger.info(f"Chat request from conversation {request.conversation_id}")
 
-        # Ensure RAG service is initialized
-        if not rag_service._initialized:
-            logger.info("RAG service not initialized, initializing now...")
-            rag_service.initialize()
-
-        # Query the RAG system
+        # Get RAG service
         result = await rag_service.query(request.message)
 
-        # Format response
-        response = ChatResponse(
-            response=result['response'],
-            sources=[
-                SourceDocument(
-                    text=src['text'],
-                    score=src['score'],
-                    metadata=src['metadata']
-                )
-                for src in result['sources']
-            ],
-            conversation_id=request.conversation_id
+        # Return structured response
+        return ChatResponse(answer=result['response'], sources=result['sources'], question=result['question'])
+
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process question: {str(e)}"
         )
 
-        return response
+class AgenticChatResponse(ChatResponse):
+    """Extended response with agentic metadata"""
+    workflow_path: str
+    rewrites_used: int
+    was_rewritten: bool
 
-    except Exception as e:
-        logger.error(f"Error processing chat request: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/chat/stats")
-async def get_stats():
-    """Get RAG service statistics"""
-    return rag_service.get_stats()
-
-
-# WebSocket endpoint for streaming (Phase 2)
-@router.websocket("/ws/chat/{conversation_id}")
-async def websocket_chat(websocket: WebSocket, conversation_id: str):
+@router.post("/chat-agentic", response_model=AgenticChatResponse)
+async def chat_agentic(request: ChatRequest):
     """
-    WebSocket endpoint for streaming chat responses
+    Handle chat requests using Agentic RAG (self-correcting)
 
-    Note: Full streaming implementation will be added in Phase 2
-    with LangGraph agentic workflow.
+    This endpoint uses LangGraph to implement:
+    - Document relevance grading
+    - Query rewriting if retrieval fails
+    - Self-correction loop (max 2 retries)
     """
-    await websocket.accept()
-    logger.info(f"WebSocket connection established: {conversation_id}")
-
     try:
-        while True:
-            # Receive message from client
-            data = await websocket.receive_text()
-            message = json.loads(data)
+        logger.info(f"Agentic chat request from conversation {request.conversation_id}")
 
-            logger.info(f"WebSocket received: {message.get('message', '')[:50]}...")
+        # Get agentic RAG service
+        rag_service = get_agentic_rag_service()
 
-            # Ensure RAG service is initialized
-            if not rag_service._initialized:
-                rag_service.initialize()
+        # Query with self-correction
+        result = rag_service.query(request.message, max_retries=2)
 
-            # Query RAG system
-            result = await rag_service.query(message['message'])
+        # Return extended response with metadata
+        return AgenticChatResponse(
+            answer=result["answer"],
+            sources=result["sources"],
+            question=result["question"],
+            workflow_path=result["workflow_path"],
+            rewrites_used=result["rewrites_used"],
+            was_rewritten=result["was_rewritten"]
+        )
 
-            # Send response back to client
-            await websocket.send_json({
-                'type': 'response',
-                'response': result['response'],
-                'sources': result['sources']
-            })
-
-    except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected: {conversation_id}")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        await websocket.close()
+        logger.error(f"Agentic chat endpoint error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process question: {str(e)}"
+        )
+
+@router.get("/chat/compare")
+async def compare_rag_types(question: str):
+    """
+    Compare simple RAG vs agentic RAG on the same question
+    Useful for evaluation and debugging
+    """
+    try:
+
+        # Simple RAG
+        simple_result = await rag_service.query(question)
+
+        # Agentic RAG
+        agentic_rag = get_agentic_rag_service()
+        agentic_result = agentic_rag.query(question)
+
+        return {
+            "question": question,
+            "simple_rag": {
+                "answer": simple_result["response"],
+                "num_sources": len(simple_result["sources"])
+            },
+            "agentic_rag": {
+                "answer": agentic_result["answer"],
+                "num_sources": agentic_result["num_sources"],
+                "workflow": agentic_result["workflow_path"],
+                "rewrites": agentic_result["rewrites_used"]
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
