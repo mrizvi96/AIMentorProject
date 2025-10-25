@@ -189,3 +189,4 @@ docs/.doctrees/
 # *.pdf
 course_materials/
 backend/chroma_db/
+backend/embedding_cache/

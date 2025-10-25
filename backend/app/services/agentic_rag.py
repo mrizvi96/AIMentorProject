@@ -7,8 +7,8 @@ from typing import Dict, List
 
 from llama_index.core import VectorStoreIndex, Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from .mistral_llm import MistralLLM
+from .custom_embeddings import FlattenedOpenAIEmbedding
 import chromadb
 
 from langgraph.graph import StateGraph, END
@@ -31,10 +31,12 @@ class AgenticRAGService:
         """Initialize all components"""
         logger.info("Initializing Agentic RAG service...")
 
-        # Configure embedding model
-        logger.info("  Loading embedding model...")
-        embed_model = HuggingFaceEmbedding(
-            model_name=settings.embedding_model_name,
+        # Configure embedding model (using LLM server with flattened responses)
+        logger.info("  Configuring embeddings via LLM server...")
+        embed_model = FlattenedOpenAIEmbedding(
+            api_base=settings.llm_base_url,
+            api_key="not-needed",
+            model="text-embedding-ada-002"  # Standard OpenAI model name
         )
         Settings.embed_model = embed_model
 
@@ -171,13 +173,9 @@ If the documents are off-topic or unhelpful, respond "no".
 Response:"""
 
         try:
-            # Call LLM for grading
-            response = self.llm.stream_chat(grading_prompt)
-
-            decision = ""
-            for chunk in response:
-                decision += chunk.delta
-            decision = decision.strip().lower()
+            # Call LLM for grading (non-streaming)
+            response = self.llm.complete(grading_prompt)
+            decision = response.text.strip().lower()
 
             # Parse yes/no (handle variations)
             if "yes" in decision:
@@ -212,12 +210,10 @@ Your task: Rewrite this question to improve retrieval results. Make it more spec
 Rewritten question:"""
 
         try:
-            response = self.llm.stream_chat(rewrite_prompt)
+            # Call LLM for query rewrite (non-streaming)
+            response = self.llm.complete(rewrite_prompt)
+            rewritten = response.text.strip()
 
-            rewritten = ""
-            for chunk in response:
-                rewritten += chunk.delta
-            rewritten = rewritten.strip()
             state["rewritten_question"] = rewritten
             state["retry_count"] += 1
 
@@ -261,12 +257,9 @@ Instructions:
 Answer:"""
 
         try:
-            response = self.llm.stream_chat(generation_prompt)
-
-            generation = ""
-            for chunk in response:
-                generation += chunk.delta
-            state["generation"] = generation.strip()
+            # Call LLM for generation (non-streaming)
+            response = self.llm.complete(generation_prompt)
+            state["generation"] = response.text.strip()
 
             logger.info(f"  Generated {len(state['generation'])} character answer")
 
@@ -371,121 +364,40 @@ Answer:"""
             raise
 
     # === STREAMING API ===
+    # TODO: Implement streaming properly in Week 3
+    # Current issue: Using stream_chat() inside nodes and consuming streams synchronously
+    # breaks LangGraph's astream_events() because streams are exhausted before events can be emitted.
+    #
+    # Proper approach (Week 3):
+    # 1. Keep nodes non-streaming (use complete())
+    # 2. Use graph.astream() to stream state updates
+    # 3. Stream only the final generation tokens to users
+    # 4. Grade/rewrite nodes remain hidden from user (no need to stream those)
 
     async def query_stream(self, question: str, max_retries: int = 2):
         """
         Query with streaming support - yields tokens as they're generated
 
+        NOTE: Currently not working due to architectural issues.
+        This needs to be reimplemented following Week 3 approach.
+
         Yields:
             Dict with type ("token", "metadata", "workflow") and content
         """
-        logger.info(f"\n{'='*60}")
-        logger.info(f"STREAMING AGENTIC RAG QUERY: {question[:100]}...")
-        logger.info(f"{'='*60}")
+        logger.warning("Streaming not yet properly implemented - using non-streaming query()")
+        result = self.query(question, max_retries)
 
-        # Initialize state (same as non-streaming)
-        initial_state: AgentState = {
-            "question": question,
-            "rewritten_question": None,
-            "documents": [],
-            "document_scores": [],
-            "generation": "",
-            "messages": [],
-            "retry_count": 0,
-            "max_retries": max_retries,
-            "relevance_decision": None,
-            "workflow_path": []
+        # Yield the complete result at once for now
+        yield {
+            "type": "complete",
+            "answer": result["answer"],
+            "sources": result["sources"],
+            "workflow_path": result["workflow_path"]
         }
+        return
 
-        try:
-            # Stream events from the graph
-            async for event in self.graph.astream_events(initial_state, version="v1"):
-                event_type = event.get("event")
-                event_name = event.get("name", "")
-                event_data = event.get("data", {})
-
-                # 1. Workflow updates (node transitions)
-                if event_type == "on_chain_start":
-                    node_name = event_name
-                    logger.info(f"[STREAM] Entering node: {node_name}")
-                    yield {
-                        "type": "workflow",
-                        "node": node_name,
-                        "status": "start"
-                    }
-
-                elif event_type == "on_chain_end":
-                    node_name = event_name
-                    logger.info(f"[STREAM] Exiting node: {node_name}")
-                    yield {
-                        "type": "workflow",
-                        "node": node_name,
-                        "status": "end"
-                    }
-
-                # 2. LLM tokens (only from generate node)
-                elif event_type == "on_chat_model_stream":
-                    # Check if this is from the generate node
-                    # (we don't want to stream grading or rewrite tokens to user)
-                    chunk = event_data.get("chunk", {})
-                    content = ""
-
-                    # Handle different chunk formats
-                    if hasattr(chunk, "delta"):
-                        content = chunk.delta
-                    elif isinstance(chunk, dict) and "delta" in chunk:
-                        content = chunk["delta"]
-
-                    if content:
-                        yield {
-                            "type": "token",
-                            "content": content
-                        }
-
-                # 3. Metadata (retrieval results, grading decisions)
-                elif event_type == "on_chain_end" and "output" in event_data:
-                    output = event_data["output"]
-
-                    # Send metadata about retrieval
-                    if event_name == "retrieve" and "documents" in output:
-                        yield {
-                            "type": "metadata",
-                            "event": "retrieval_complete",
-                            "num_documents": len(output.get("documents", []))
-                        }
-
-                    # Send metadata about grading
-                    elif event_name == "grade_documents" and "relevance_decision" in output:
-                        yield {
-                            "type": "metadata",
-                            "event": "grading_complete",
-                            "decision": output["relevance_decision"]
-                        }
-
-                    # Send metadata about rewrite
-                    elif event_name == "rewrite_query" and "rewritten_question" in output:
-                        yield {
-                            "type": "metadata",
-                            "event": "query_rewritten",
-                            "original": output["question"],
-                            "rewritten": output["rewritten_question"]
-                        }
-
-            # Final metadata
-            logger.info(f"[STREAM] Workflow complete")
-            yield {
-                "type": "complete",
-                "message": "Generation finished"
-            }
-
-        except Exception as e:
-            logger.error(f"Streaming failed: {e}")
-            import traceback
-            traceback.print_exc()
-            yield {
-                "type": "error",
-                "error": str(e)
-            }
+        # OLD BROKEN IMPLEMENTATION REMOVED
+        # See STREAMING_FIX_10252025.md for details on why this didn't work
 
 # Global singleton
 _agentic_rag_service = None

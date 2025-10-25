@@ -2,6 +2,7 @@
 Custom LLM wrapper for llama.cpp server running Mistral-7B
 """
 from typing import Any
+import json
 import requests
 from llama_index.core.llms import CustomLLM, CompletionResponse, LLMMetadata
 from llama_index.core.llms.callbacks import llm_completion_callback
@@ -27,7 +28,6 @@ class MistralLLM(CustomLLM):
     @llm_completion_callback()
     def complete(self, prompt: str, **kwargs: Any) -> CompletionResponse:
         """Call llama.cpp server for completion"""
-        print(f"Prompt: {prompt}")
         response = requests.post(
             f"{self.server_url}/v1/completions",
             json={

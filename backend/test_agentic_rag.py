@@ -3,7 +3,11 @@ Test script for Agentic RAG service
 Tests various scenarios including query rewriting
 """
 import sys
-sys.path.append('/root/AIMentorProject-1/backend')
+import os
+
+# Add backend directory to path
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, backend_dir)
 
 from app.services.agentic_rag import get_agentic_rag_service
 
