@@ -57,6 +57,9 @@ pip install -r requirements.txt
 pip uninstall -y llama-cpp-python
 CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
 pip install "numpy<2.0.0" --force-reinstall
+
+# Install WebSocket testing library
+pip install websockets
 cd ..
 ```
 
@@ -500,6 +503,99 @@ python3 ingest.py --directory ./course_materials/ --overwrite
 
 # Check background processes
 ps aux | grep python3
+```
+
+---
+
+### ERROR 5: WebSocket Streaming - stream_chat() AttributeError
+
+**Full Error**:
+```
+AttributeError: 'dict' object has no attribute 'role'
+  File "/root/AIMentorProject-1/backend/app/services/agentic_rag.py", line 452
+    stream_response = self.llm.stream_chat([{"role": "user", "content": generation_prompt}])
+  File ".../mistral_llm.py", line 80, in stream_chat
+    prompt = self.messages_to_prompt(messages)
+  File ".../generic_utils.py", line 35, in messages_to_prompt
+    role = message.role
+AttributeError: 'dict' object has no attribute 'role'
+```
+
+**Symptoms**:
+- WebSocket connection succeeds
+- Workflow events stream correctly (retrieve, grade, generate)
+- Error occurs when trying to stream answer tokens
+- No answer returned to user
+
+**Root Cause**:
+`stream_chat()` expects LlamaIndex `ChatMessage` objects (with `.role` and `.content` attributes), not plain Python dictionaries.
+
+**Fix**:
+Use `stream_complete(prompt_string)` instead of `stream_chat(messages_list)` for the MistralLLM class.
+
+**File: `backend/app/services/agentic_rag.py`** - Lines 450-463:
+
+**❌ WRONG (causes error)**:
+```python
+stream_response = self.llm.stream_chat([{"role": "user", "content": generation_prompt}])
+```
+
+**✅ CORRECT**:
+```python
+stream_response = self.llm.stream_complete(generation_prompt)
+
+answer_buffer = ""
+for chunk in stream_response:
+    # Extract token from CompletionResponse
+    token = chunk.text if hasattr(chunk, 'text') else str(chunk)
+
+    answer_buffer += token
+    yield {
+        "type": "token",
+        "content": token
+    }
+```
+
+**Why This Works**:
+- `stream_complete()` accepts a plain string prompt (from `mistral_llm.py:50`)
+- `stream_chat()` wraps `stream_complete()` but expects structured message objects
+- For custom LLM implementations like MistralLLM, use `stream_complete()` directly
+
+**Testing WebSocket Streaming**:
+```bash
+cd /root/AIMentorProject-1/backend
+source venv/bin/activate
+
+# Start backend server (in background)
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload > backend.log 2>&1 &
+
+# Run WebSocket test
+python3 test_streaming_ws.py
+
+# Expected output:
+# ✓ WebSocket connected
+# [WORKFLOW] Running retrieve...
+# [WORKFLOW] Running grade_documents...
+# [WORKFLOW] Running generate...
+# <streamed answer tokens>
+# ✓ Answer received (777+ chars)
+```
+
+---
+
+## Testing Commands
+
+```bash
+# Test WebSocket streaming (single question)
+cd /root/AIMentorProject-1/backend
+source venv/bin/activate
+python3 test_streaming_ws.py
+
+# Test multiple questions in sequence
+python3 test_streaming_ws.py multi
+
+# Test agentic RAG (non-streaming)
+python3 test_agentic_rag.py
 ```
 
 ---

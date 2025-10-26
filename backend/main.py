@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from app.api.chat_router import router as chat_router
+from app.api.chat_ws import router as chat_ws_router
 
 # Configure logging
 logging.basicConfig(
@@ -36,6 +37,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat_router)
+app.include_router(chat_ws_router)
 
 @app.get("/")
 def health_check():

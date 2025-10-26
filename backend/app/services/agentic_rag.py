@@ -367,40 +367,139 @@ Answer:"""
             raise
 
     # === STREAMING API ===
-    # TODO: Implement streaming properly in Week 3
-    # Current issue: Using stream_chat() inside nodes and consuming streams synchronously
-    # breaks LangGraph's astream_events() because streams are exhausted before events can be emitted.
-    #
-    # Proper approach (Week 3):
-    # 1. Keep nodes non-streaming (use complete())
-    # 2. Use graph.astream() to stream state updates
-    # 3. Stream only the final generation tokens to users
-    # 4. Grade/rewrite nodes remain hidden from user (no need to stream those)
 
     async def query_stream(self, question: str, max_retries: int = 2):
         """
-        Query with streaming support - yields tokens as they're generated
+        Query with streaming support - yields workflow events and tokens
 
-        NOTE: Currently not working due to architectural issues.
-        This needs to be reimplemented following Week 3 approach.
+        Yields workflow updates as the agent progresses through nodes:
+        - type: "workflow" - node transitions (retrieve, grade, rewrite)
+        - type: "token" - answer tokens during generation
+        - type: "complete" - final result with sources and metadata
+
+        Args:
+            question: User's question
+            max_retries: Maximum query rewrites allowed (default: 2)
 
         Yields:
-            Dict with type ("token", "metadata", "workflow") and content
+            Dict with type and content (workflow event, token, or complete result)
         """
-        logger.warning("Streaming not yet properly implemented - using non-streaming query()")
-        result = self.query(question, max_retries)
+        logger.info(f"\n{'='*60}")
+        logger.info(f"AGENTIC RAG STREAMING QUERY: {question[:100]}...")
+        logger.info(f"{'='*60}")
 
-        # Yield the complete result at once for now
-        yield {
-            "type": "complete",
-            "answer": result["answer"],
-            "sources": result["sources"],
-            "workflow_path": result["workflow_path"]
+        # Initialize state
+        initial_state: AgentState = {
+            "question": question,
+            "rewritten_question": None,
+            "documents": [],
+            "document_scores": [],
+            "generation": "",
+            "messages": [],
+            "retry_count": 0,
+            "max_retries": max_retries,
+            "relevance_decision": None,
+            "workflow_path": []
         }
-        return
 
-        # OLD BROKEN IMPLEMENTATION REMOVED
-        # See STREAMING_FIX_10252025.md for details on why this didn't work
+        try:
+            # Stream state updates from the graph
+            workflow_events = []
+            final_state = None
+
+            async for event in self.graph.astream(initial_state):
+                # Event structure: {node_name: state}
+                for node_name, state in event.items():
+                    workflow_events.append(node_name)
+
+                    # Yield workflow progress (for UI feedback)
+                    yield {
+                        "type": "workflow",
+                        "node": node_name,
+                        "message": f"Running {node_name}..."
+                    }
+
+                    # Store final state
+                    final_state = state
+
+            # After graph completes, stream the answer using real LLM streaming
+            if final_state and final_state["documents"]:
+                # Reconstruct the generation prompt from final state
+                question = final_state.get("rewritten_question") or final_state["question"]
+                documents = final_state["documents"]
+
+                context = "\n\n".join([f"Source {i+1}:\n{doc}"
+                                       for i, doc in enumerate(documents)])
+
+                generation_prompt = f"""You are an expert Computer Science mentor helping students learn.
+
+Context Documents:
+{context}
+
+Question: {question}
+
+Instructions:
+- Provide a clear, concise answer based STRICTLY on the context above
+- If context is insufficient, acknowledge it honestly
+- Cite sources by mentioning "Source 1", "Source 2", etc.
+- Use analogies to make concepts accessible
+- Be encouraging and supportive
+
+Answer:"""
+
+                # Stream tokens from LLM
+                logger.info("  Streaming answer tokens from LLM...")
+                stream_response = self.llm.stream_complete(generation_prompt)
+
+                answer_buffer = ""
+                for chunk in stream_response:
+                    # Extract token from CompletionResponse
+                    token = chunk.text if hasattr(chunk, 'text') else str(chunk)
+
+                    answer_buffer += token
+                    yield {
+                        "type": "token",
+                        "content": token
+                    }
+
+                # Store the streamed answer in final_state for metadata
+                final_state["generation"] = answer_buffer.strip()
+
+            # Yield final completion event with metadata
+            if final_state:
+                yield {
+                    "type": "complete",
+                    "answer": final_state["generation"],
+                    "sources": [
+                        {
+                            "text": doc[:200] + "..." if len(doc) > 200 else doc,
+                            "score": score,
+                            "metadata": {}
+                        }
+                        for doc, score in zip(final_state["documents"], final_state["document_scores"])
+                    ],
+                    "question": question,
+                    "num_sources": len(final_state["documents"]),
+                    "workflow_path": " → ".join(final_state["workflow_path"]),
+                    "rewrites_used": final_state["retry_count"],
+                    "was_rewritten": final_state["rewritten_question"] is not None
+                }
+
+            logger.info(f"\n{'='*60}")
+            logger.info(f"STREAMING COMPLETE: {' → '.join(workflow_events)}")
+            logger.info(f"{'='*60}\n")
+
+        except Exception as e:
+            logger.error(f"Agentic RAG streaming failed: {e}")
+            import traceback
+            traceback.print_exc()
+
+            # Yield error event
+            yield {
+                "type": "error",
+                "message": f"Streaming failed: {str(e)}"
+            }
+            raise
 
 # Global singleton
 _agentic_rag_service = None
