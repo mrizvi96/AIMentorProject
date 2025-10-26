@@ -2,6 +2,10 @@
 Document Ingestion Script
 Ingests PDF documents into Milvus vector store for RAG retrieval
 """
+import os
+# Disable hf_transfer before any other imports
+os.environ.pop('HF_HUB_ENABLE_HF_TRANSFER', None)
+
 import argparse
 import logging
 from pathlib import Path
@@ -11,10 +15,10 @@ import sys
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.node_parser import SentenceSplitter
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 import chromadb
 
 from app.core.config import settings
-from app.services.custom_embeddings import FlattenedOpenAIEmbedding
 
 # Configure logging
 logging.basicConfig(
@@ -77,18 +81,19 @@ def load_single_pdf(pdf_path: Path) -> List:
 
 
 def setup_embedding_model():
-    """Setup embedding model using LLM server"""
+    """Setup embedding model using sentence-transformers (GPU-accelerated)"""
     try:
-        logger.info("Configuring embeddings via LLM server (http://localhost:8080)")
-        embed_model = FlattenedOpenAIEmbedding(
-            api_base="http://localhost:8080/v1",
-            api_key="not-needed",  # Local server doesn't need auth
-            model="text-embedding-ada-002"  # Standard OpenAI model name
+        logger.info("Configuring embeddings via sentence-transformers (GPU-accelerated)")
+        embed_model = HuggingFaceEmbedding(
+            model_name="all-MiniLM-L6-v2",  # Fast, lightweight embedding model
+            device="cuda"  # Use GPU for fast embeddings
         )
-        logger.info("✓ Embedding model configured (using LLM server with flattened responses)")
+        logger.info("✓ Embedding model configured (sentence-transformers on GPU)")
         return embed_model
     except Exception as e:
         logger.error(f"Failed to configure embedding model: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

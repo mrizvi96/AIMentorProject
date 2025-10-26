@@ -7,8 +7,8 @@ from typing import Dict, List
 
 from llama_index.core import VectorStoreIndex, Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from .mistral_llm import MistralLLM
-from .custom_embeddings import FlattenedOpenAIEmbedding
 import chromadb
 
 from langgraph.graph import StateGraph, END
@@ -31,12 +31,15 @@ class AgenticRAGService:
         """Initialize all components"""
         logger.info("Initializing Agentic RAG service...")
 
-        # Configure embedding model (using LLM server with flattened responses)
-        logger.info("  Configuring embeddings via LLM server...")
-        embed_model = FlattenedOpenAIEmbedding(
-            api_base=settings.llm_base_url,
-            api_key="not-needed",
-            model="text-embedding-ada-002"  # Standard OpenAI model name
+        # Configure embedding model (using sentence-transformers on GPU)
+        logger.info("  Configuring embeddings via sentence-transformers...")
+        import os
+        # Disable hf_transfer to avoid dependency issues
+        os.environ.pop('HF_HUB_ENABLE_HF_TRANSFER', None)
+
+        embed_model = HuggingFaceEmbedding(
+            model_name="all-MiniLM-L6-v2",  # Fast, lightweight embedding model
+            device="cuda"  # Use GPU for fast embeddings
         )
         Settings.embed_model = embed_model
 
