@@ -600,4 +600,293 @@ python3 test_agentic_rag.py
 
 ---
 
+### ERROR 6: Frontend lib/ Directory Ignored by Git
+
+**Full Error**:
+```
+The following paths are ignored by one of your .gitignore files:
+frontend/src/lib
+hint: Use -f if you really want to add them.
+```
+
+**Symptoms**:
+- Frontend source files (components, stores, API) not tracked by Git
+- `git status` shows only modified files, not new lib/ directory
+- Changes to frontend components don't appear in repository
+
+**Root Cause**:
+Root-level `.gitignore` contains `lib/` pattern intended to exclude Python virtual environment directories (`lib/` and `lib64/`), but it also catches the frontend SvelteKit `src/lib/` directory which contains important source code.
+
+**Fix**:
+Force-add the frontend lib directory:
+
+```bash
+git add -f frontend/src/lib/
+```
+
+**Better Long-Term Fix**:
+Update root `.gitignore` to be more specific:
+
+```gitignore
+# Python virtual environment (change from lib/ to:)
+venv/lib/
+venv/lib64/
+backend/venv/lib/
+backend/venv/lib64/
+```
+
+This prevents the pattern from catching frontend source directories.
+
+**Verification**:
+```bash
+git status
+# Should now show:
+#   new file:   frontend/src/lib/api.ts
+#   new file:   frontend/src/lib/components/...
+```
+
+---
+
+### ERROR 7: WebSocket Connection 403 Forbidden
+
+**Full Error in Backend Logs**:
+```
+INFO:     ('127.0.0.1', 41558) - "WebSocket /ws/chat/14aebee9-d07c-4fb6-a7e3-6bf590ed9758" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+```
+
+**Frontend Error**:
+```
+⚠️ Connection error. Please check if the backend is running.
+```
+
+**Symptoms**:
+- Frontend sends WebSocket connection request
+- Backend rejects with 403 Forbidden
+- Chat input remains disabled with spinning loading indicator
+- No response to user queries
+
+**Root Cause**:
+WebSocket endpoint path mismatch between frontend and backend:
+- **Frontend**: `/ws/chat/{conversation_id}` (with parameter)
+- **Backend**: `/api/ws/chat` (no parameter)
+
+Additionally, frontend was sending plain string instead of JSON format.
+
+**Fix**:
+
+**File: `frontend/src/lib/api.ts`** - Line 49:
+
+**❌ WRONG**:
+```typescript
+socket = new WebSocket(`${WS_BASE}/ws/chat/${currentConversationId}`);
+socket.onopen = () => {
+    socket?.send(userMessage);  // Plain string
+}
+```
+
+**✅ CORRECT**:
+```typescript
+socket = new WebSocket(`${WS_BASE}/api/ws/chat`);
+socket.onopen = () => {
+    socket?.send(JSON.stringify({
+        message: userMessage,
+        max_retries: 2
+    }));
+}
+```
+
+**Why This Works**:
+- Backend WebSocket endpoint defined at `/api/ws/chat` in `chat_ws.py:17`
+- Backend expects JSON: `{"message": "...", "max_retries": 2}`
+- No conversation_id parameter needed (stateless per connection)
+
+**Verification**:
+```bash
+# Check backend logs after fix
+tail -f backend/backend.log
+# Should see:
+# INFO:     WebSocket connection established
+# INFO:     Received question: What is python?...
+```
+
+---
+
+### ERROR 8: Loading State Not Clearing After Response
+
+**Symptoms**:
+- User asks a question
+- Response streams successfully
+- Sources display correctly
+- BUT input field remains disabled
+- Spinning loading indicator never disappears
+- User cannot ask follow-up questions
+
+**Root Cause**:
+Frontend receives "complete" event from backend but never clears the `isLoading` store or closes the WebSocket. The connection stays open indefinitely, keeping the UI in loading state.
+
+**Fix**:
+
+**File: `frontend/src/lib/api.ts`** - Lines 114-138:
+
+**❌ WRONG (missing cleanup)**:
+```typescript
+} else if (data.type === 'complete') {
+    // Add sources to message
+    messages.update(msgs => {
+        return msgs.map(m =>
+            m.id === assistantMessageId
+                ? { ...m, sources: sourceNames }
+                : m
+        );
+    });
+    // Missing: isLoading.set(false) and socket.close()
+}
+```
+
+**✅ CORRECT**:
+```typescript
+} else if (data.type === 'complete') {
+    // Backend sends final completion with sources
+    const sourceNames = data.sources?.map((s: any, i: number) =>
+        `Source ${i + 1}: ${s.text.substring(0, 100)}...`
+    ) || [];
+
+    // Add sources to message
+    messages.update(msgs => {
+        return msgs.map(m =>
+            m.id === assistantMessageId
+                ? { ...m, sources: sourceNames }
+                : m
+        );
+    });
+
+    // Response is complete - clear loading state
+    isLoading.set(false);
+    currentWorkflow.set([]);
+
+    // Close the socket since we're done
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+}
+```
+
+**Why This Works**:
+- `isLoading.set(false)` re-enables the chat input
+- `currentWorkflow.set([])` clears workflow visualization
+- `socket.close()` properly terminates the WebSocket connection
+- Sets socket to `null` to prevent reuse
+
+**Verification**:
+1. Ask a question in the UI
+2. Wait for complete response
+3. Input field should become enabled immediately
+4. Spinning indicator should disappear
+5. Can type new question right away
+
+---
+
+## Updated Fresh Instance Setup Summary
+
+When setting up a **completely fresh Runpod instance**, follow these steps in order:
+
+### 1. Clone Repository
+```bash
+cd /root
+git clone https://github.com/mrizvi96/AIMentorProject.git
+cd AIMentorProject
+```
+
+### 2. Download Model & Course Materials
+```bash
+# Download Mistral-7B Q5_K_M (~2 minutes)
+mkdir -p backend/models
+cd backend/models
+wget "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q5_K_M.gguf"
+
+# Download course PDFs (~1 minute)
+cd ..
+pip3 install gdown
+mkdir -p course_materials
+cd course_materials
+gdown "1DECFKmdQjbLRQpJWQUd1J6KViRIPf6ab"
+gdown "1WVTdiVOhe7Oov2TDG3AXIg3c8HIthSac"
+gdown "1YAqEenI_z6CyZBSEUPgO2gjAELw5bwIt"
+gdown "1mgJSWWzcA1PnHytQVp0kt5dyXx2NzIn0"
+gdown "1nR4Mrx8BdTAOxGL_SXk80RRb9Oy-oeiZ"
+gdown "1sAEmzgyx63SMQCGmCuSddnzxfXrUKFZE"
+cd ../..
+```
+
+### 3. Setup Backend Environment
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+
+# CRITICAL: Reinstall llama-cpp-python with CUDA support
+pip uninstall -y llama-cpp-python
+CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
+pip install "numpy<2.0.0" --force-reinstall
+
+# Verify GPU support
+python3 -c "from llama_cpp import llama_supports_gpu_offload; print('CUDA:', llama_supports_gpu_offload())"
+```
+
+### 4. Start LLM Server
+```bash
+source venv/bin/activate
+nohup python3 -m llama_cpp.server \
+  --model ./models/mistral-7b-instruct-v0.2.Q5_K_M.gguf \
+  --n_gpu_layers -1 \
+  --n_ctx 4096 \
+  --host 0.0.0.0 \
+  --port 8080 \
+  --chat_format mistral-instruct \
+  --embedding true > llm_server.log 2>&1 &
+
+# Wait for model to load (~30 seconds)
+sleep 30
+nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits  # Should show ~5900 MB
+```
+
+### 5. Run Document Ingestion
+```bash
+source venv/bin/activate
+python3 ingest.py --directory ./course_materials/ --overwrite
+# Takes ~2-3 minutes, creates 4,193 chunks
+```
+
+### 6. Start Backend API
+```bash
+source venv/bin/activate
+nohup uvicorn main:app --host 0.0.0.0 --port 8000 --reload > backend.log 2>&1 &
+sleep 3
+curl http://localhost:8000/  # Should return: {"status":"ok",...}
+```
+
+### 7. Setup Frontend
+```bash
+cd ../frontend
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173 > frontend.log 2>&1 &
+```
+
+### 8. Verify System
+```bash
+cd backend
+source venv/bin/activate
+python3 test_agentic_rag.py
+# Should see: ✅ ALL TESTS PASSED
+```
+
+**Total Time**: ~10-15 minutes (first run), ~5 minutes (subsequent runs if model/PDFs cached)
+
+---
+
 **End of Log**
