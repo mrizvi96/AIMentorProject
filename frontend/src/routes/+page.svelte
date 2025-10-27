@@ -1,53 +1,22 @@
 <script lang="ts">
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageList from '$lib/components/MessageList.svelte';
-	import { messages, isLoading, error } from '$lib/stores';
-	import { sendMessage } from '$lib/api';
-	import type { Message } from '$lib/stores';
+	import { error } from '$lib/stores';
+	import { sendMessageWebSocket, closeWebSocket } from '$lib/api';
+	import { onDestroy } from 'svelte';
 
-	async function handleSend(message: string) {
-		// Add user message
-		const userMessage: Message = {
-			id: crypto.randomUUID(),
-			role: 'user',
-			content: message,
-			timestamp: new Date()
-		};
-		messages.update((m) => [...m, userMessage]);
-
-		// Set loading state
-		isLoading.set(true);
-		error.set(null);
-
+	function handleSend(message: string) {
 		try {
-			// Send to backend
-			const response = await sendMessage(message);
-
-			// Add assistant response
-			const assistantMessage: Message = {
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: response.response,
-				timestamp: new Date(),
-				sources: response.sources
-			};
-			messages.update((m) => [...m, assistantMessage]);
+			sendMessageWebSocket(message);
 		} catch (err) {
 			console.error('Failed to send message:', err);
-			error.set('Failed to get response. Make sure the backend is running.');
-
-			// Add error message to chat
-			const errorMessage: Message = {
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: 'Sorry, I encountered an error. Please make sure the backend server is running.',
-				timestamp: new Date()
-			};
-			messages.update((m) => [...m, errorMessage]);
-		} finally {
-			isLoading.set(false);
+			error.set('Failed to connect. Make sure the backend is running.');
 		}
 	}
+
+	onDestroy(() => {
+		closeWebSocket();
+	});
 </script>
 
 <svelte:head>
@@ -56,13 +25,21 @@
 
 <div class="app-container">
 	<header>
-		<h1>AI Mentor</h1>
-		<p>Your intelligent computer science tutor</p>
+		<div class="header-content">
+			<div>
+				<h1>AI Tutor</h1>
+				<p>Intelligent CS tutor powered by agentic RAG</p>
+			</div>
+			<div class="status-indicator">
+				<span class="status-dot"></span>
+				<span>Live</span>
+			</div>
+		</div>
 	</header>
 
 	{#if $error}
 		<div class="error-banner">
-			{$error}
+			⚠️ {$error}
 		</div>
 	{/if}
 
@@ -94,6 +71,14 @@
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	}
 
+	.header-content {
+		max-width: 1200px;
+		margin: 0 auto;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
 	header h1 {
 		margin: 0 0 0.25rem 0;
 		font-size: 1.75rem;
@@ -106,11 +91,39 @@
 		font-size: 0.95rem;
 	}
 
+	.status-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: rgba(255, 255, 255, 0.2);
+		padding: 0.5rem 1rem;
+		border-radius: 20px;
+		font-size: 0.875rem;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		background: #4caf50;
+		border-radius: 50%;
+		animation: pulse-dot 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse-dot {
+		0%, 100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.5;
+		}
+	}
+
 	.error-banner {
 		background: #fee;
 		color: #c33;
 		padding: 1rem 2rem;
 		border-bottom: 1px solid #fcc;
+		text-align: center;
 	}
 
 	main {
