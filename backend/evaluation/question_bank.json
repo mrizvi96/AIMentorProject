@@ -1,0 +1,177 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-10-30",
+    "description": "Diverse question bank for evaluating AI Mentor RAG system",
+    "total_questions": 20,
+    "categories": [
+      "factual_recall",
+      "conceptual_understanding",
+      "code_analysis",
+      "problem_solving",
+      "comparative_analysis"
+    ]
+  },
+  "questions": [
+    {
+      "id": "Q001",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "question": "What is Python?",
+      "expected_topics": ["programming language", "interpreted", "high-level", "general-purpose"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q002",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "question": "Explain the concept of recursion in programming.",
+      "expected_topics": ["function calls itself", "base case", "recursive case", "stack"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q003",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "question": "What is a variable in programming?",
+      "expected_topics": ["storage location", "named reference", "holds data", "value"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q004",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "question": "What is the difference between a list and a tuple in Python?",
+      "expected_topics": ["mutable", "immutable", "list can change", "tuple cannot change"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q005",
+      "category": "code_analysis",
+      "difficulty": "medium",
+      "question": "What does the following Python code do: for i in range(5): print(i)",
+      "expected_topics": ["loop", "iteration", "prints numbers", "0 to 4"],
+      "should_cite_sources": false
+    },
+    {
+      "id": "Q006",
+      "category": "conceptual_understanding",
+      "difficulty": "hard",
+      "question": "Explain how binary search works and why it's more efficient than linear search.",
+      "expected_topics": ["divide and conquer", "sorted array", "O(log n)", "comparison"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q007",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "question": "What is an algorithm?",
+      "expected_topics": ["step-by-step procedure", "problem solving", "instructions", "computation"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q008",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "question": "What is object-oriented programming?",
+      "expected_topics": ["objects", "classes", "encapsulation", "inheritance", "polymorphism"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q009",
+      "category": "problem_solving",
+      "difficulty": "medium",
+      "question": "How would you find the largest number in a list of integers?",
+      "expected_topics": ["iterate", "compare", "maximum", "loop"],
+      "should_cite_sources": false
+    },
+    {
+      "id": "Q010",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "question": "What is a function in programming?",
+      "expected_topics": ["reusable code", "block of code", "performs task", "parameters"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q011",
+      "category": "comparative_analysis",
+      "difficulty": "hard",
+      "question": "Compare and contrast arrays and linked lists. When would you use each?",
+      "expected_topics": ["contiguous memory", "dynamic size", "access time", "insertion"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q012",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "question": "What is Big O notation and why is it important?",
+      "expected_topics": ["time complexity", "performance", "algorithm efficiency", "scaling"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q013",
+      "category": "code_analysis",
+      "difficulty": "easy",
+      "question": "What is the purpose of comments in code?",
+      "expected_topics": ["documentation", "explain", "readability", "maintenance"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q014",
+      "category": "conceptual_understanding",
+      "difficulty": "hard",
+      "question": "Explain how memory management works in Python, including garbage collection.",
+      "expected_topics": ["automatic", "reference counting", "garbage collector", "memory allocation"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q015",
+      "category": "problem_solving",
+      "difficulty": "medium",
+      "question": "How would you reverse a string in Python?",
+      "expected_topics": ["slicing", "reverse", "string manipulation", "[::-1]"],
+      "should_cite_sources": false
+    },
+    {
+      "id": "Q016",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "question": "What is a data structure?",
+      "expected_topics": ["organize data", "storage format", "collection", "efficient access"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q017",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "question": "What is the difference between a stack and a queue?",
+      "expected_topics": ["LIFO", "FIFO", "last in first out", "first in first out"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q018",
+      "category": "comparative_analysis",
+      "difficulty": "hard",
+      "question": "Compare interpreted languages like Python with compiled languages like C++.",
+      "expected_topics": ["execution", "compilation", "performance", "portability"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q019",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "question": "What is a loop and why are loops useful in programming?",
+      "expected_topics": ["repetition", "iteration", "automation", "efficiency"],
+      "should_cite_sources": true
+    },
+    {
+      "id": "Q020",
+      "category": "problem_solving",
+      "difficulty": "hard",
+      "question": "Design an algorithm to check if a string is a palindrome.",
+      "expected_topics": ["reverse comparison", "two pointers", "algorithm design"],
+      "should_cite_sources": false
+    }
+  ]
+}

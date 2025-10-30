@@ -2,6 +2,10 @@
 Simple RAG Service for AI Mentor
 Handles document retrieval and response generation using LlamaIndex
 """
+import os
+# Disable hf_transfer before any HuggingFace imports
+os.environ.pop('HF_HUB_ENABLE_HF_TRANSFER', None)
+
 from typing import List, Dict, Optional
 import logging
 from llama_index.core import VectorStoreIndex, ServiceContext, Settings, PromptTemplate
@@ -40,7 +44,8 @@ class RAGService:
             # Initialize embedding model (HuggingFace sentence-transformers)
             logger.info(f"Loading embedding model: {settings.embedding_model_name}")
             embed_model = HuggingFaceEmbedding(
-                model_name=settings.embedding_model_name
+                model_name=settings.embedding_model_name,
+                device="cuda"  # Use GPU for fast embeddings
             )
 
             # Initialize LLM (llama.cpp server)
