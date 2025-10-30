@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 512
 
     # Embedding Configuration
-    embedding_model_name: str = "./embedding_cache/models--BAAI--bge-small-en-v1.5/snapshots/5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+    embedding_model_name: str = "all-MiniLM-L6-v2"  # Fast, lightweight embedding model
     embedding_dimension: int = 384
 
     # ChromaDB Configuration (file-based, no server needed)

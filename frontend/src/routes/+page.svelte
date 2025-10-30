@@ -2,21 +2,16 @@
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageList from '$lib/components/MessageList.svelte';
 	import { error } from '$lib/stores';
-	import { sendMessageWebSocket, closeWebSocket } from '$lib/api';
-	import { onDestroy } from 'svelte';
+	import { sendMessageHTTP } from '$lib/api';
 
-	function handleSend(message: string) {
+	async function handleSend(message: string) {
 		try {
-			sendMessageWebSocket(message);
+			await sendMessageHTTP(message);
 		} catch (err) {
 			console.error('Failed to send message:', err);
 			error.set('Failed to connect. Make sure the backend is running.');
 		}
 	}
-
-	onDestroy(() => {
-		closeWebSocket();
-	});
 </script>
 
 <svelte:head>
@@ -28,7 +23,7 @@
 		<div class="header-content">
 			<div>
 				<h1>AI Tutor</h1>
-				<p>Intelligent CS tutor powered by agentic RAG</p>
+				<p>Intelligent CS tutor powered by RAG</p>
 			</div>
 			<div class="status-indicator">
 				<span class="status-dot"></span>

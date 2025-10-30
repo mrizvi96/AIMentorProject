@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Tutor Test</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #result { margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        .loading { color: #666; font-style: italic; }
+        .success { color: #0a0; }
+        .error { color: #d00; }
+    </style>
+</head>
+<body>
+    <h1>🤖 AI Tutor Connection Test</h1>
+    <p>Click the button to test if backend is accessible:</p>
+    <button onclick="testBackend()">Test Backend Connection</button>
+    <div id="result"></div>
+
+    <script>
+        async function testBackend() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'loading';
+            resultDiv.innerHTML = 'Testing connection to backend...';
+
+            try {
+                const response = await fetch('http://localhost:8000/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'What is Python?',
+                        conversation_id: 'test-connection'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    <h3>✅ Success! Backend is working!</h3>
+                    <p><strong>Question:</strong> What is Python?</p>
+                    <p><strong>Answer:</strong> ${data.answer.substring(0, 200)}...</p>
+                    <p><strong>Sources:</strong> ${data.sources?.length || 0} documents</p>
+                    <hr>
+                    <p style="color: #0a0;"><strong>✓ Your AI Tutor is fully operational!</strong></p>
+                `;
+            } catch (err) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Connection Failed</h3>
+                    <p>${err.message}</p>
+                    <p><strong>Troubleshooting:</strong></p>
+                    <ul>
+                        <li>Make sure you've forwarded port 8000 in VSCode</li>
+                        <li>Or update the fetch URL to use your Runpod public URL</li>
+                    </ul>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

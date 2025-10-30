@@ -789,6 +789,47 @@ Frontend receives "complete" event from backend but never clears the `isLoading`
 
 ---
 
+### ERROR 9: Numpy Version Conflict After CUDA Reinstall
+
+**Full Error**:
+```
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed.
+llama-index-core 0.10.68.post1 requires numpy<2.0.0, but you have numpy 2.3.4 which is incompatible.
+```
+
+**Symptoms**:
+- After reinstalling llama-cpp-python with CUDA support, numpy 2.3.4 is automatically installed
+- llama-index-core requires numpy<2.0.0
+- Version conflict warnings appear during pip install
+- May cause runtime errors when using llama-index
+
+**Root Cause**:
+When rebuilding llama-cpp-python from source with CMAKE_ARGS="-DGGML_CUDA=on", pip installs the latest numpy version (2.3.4) as a dependency. However, llama-index-core specifically requires numpy<2.0.0 due to API compatibility issues.
+
+**Fix**:
+Downgrade numpy immediately after CUDA reinstall:
+
+```bash
+source venv/bin/activate
+pip install "numpy<2.0.0" --force-reinstall
+```
+
+**Verification**:
+```bash
+python3 -c "import numpy; print('Numpy version:', numpy.__version__)"
+# Should output: Numpy version: 1.26.4 (or any version <2.0.0)
+```
+
+**Why This Works**:
+- Numpy 1.26.x is compatible with both llama-cpp-python and llama-index-core
+- The --force-reinstall flag ensures the correct version is installed even if a newer version exists
+- This step must be done AFTER the CUDA reinstall, not before
+
+**Important Note**:
+This fix is REQUIRED for the system to work correctly. Without it, you may encounter runtime errors when using the RAG services that depend on llama-index.
+
+---
+
 ## Updated Fresh Instance Setup Summary
 
 When setting up a **completely fresh Runpod instance**, follow these steps in order:

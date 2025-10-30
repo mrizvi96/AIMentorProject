@@ -87,6 +87,17 @@ async def startup_event():
     logger.info("Listening on port 8000")
     logger.info("API docs available at http://localhost:8000/docs")
 
+    # Initialize RAG service
+    try:
+        from app.services.rag_service import rag_service
+        logger.info("Initializing RAG service...")
+        rag_service.initialize()
+        logger.info("✓ RAG service initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize RAG service: {e}")
+        import traceback
+        traceback.print_exc()
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Run on application shutdown"""

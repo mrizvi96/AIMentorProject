@@ -26,6 +26,65 @@ export async function sendMessage(message: string): Promise<{ response: string; 
 	return response.json();
 }
 
+/**
+ * Send a message using simple HTTP (non-streaming)
+ * This integrates with Svelte stores for state management
+ */
+export async function sendMessageHTTP(userMessage: string) {
+	// Add user message to chat
+	const userMsg: Message = {
+		id: crypto.randomUUID(),
+		role: 'user',
+		content: userMessage,
+		timestamp: new Date()
+	};
+	messages.update(m => [...m, userMsg]);
+
+	// Set loading state
+	isLoading.set(true);
+	error.set(null);
+
+	try {
+		// Call simple RAG endpoint
+		const response = await fetch(`${API_BASE}/api/chat`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				message: userMessage,
+				conversation_id: currentConversationId
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+
+		const data = await response.json();
+
+		// Add assistant message to chat
+		const assistantMsg: Message = {
+			id: crypto.randomUUID(),
+			role: 'assistant',
+			content: data.answer,
+			timestamp: new Date(),
+			sources: data.sources?.map((s: any, i: number) => {
+				const fileName = s.metadata?.file_name || 'Unknown source';
+				const page = s.metadata?.page_label ? ` (page ${s.metadata.page_label})` : '';
+				return `${fileName}${page}`;
+			}) || []
+		};
+		messages.update(m => [...m, assistantMsg]);
+
+	} catch (err) {
+		console.error('Failed to send message:', err);
+		error.set(err instanceof Error ? err.message : 'Failed to connect to backend');
+	} finally {
+		isLoading.set(false);
+	}
+}
+
 export function sendMessageWebSocket(userMessage: string) {
 	// Add user message
 	const msg: Message = {
