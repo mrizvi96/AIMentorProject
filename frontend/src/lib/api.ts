@@ -67,13 +67,9 @@ export async function sendMessageHTTP(userMessage: string) {
 		const assistantMsg: Message = {
 			id: crypto.randomUUID(),
 			role: 'assistant',
-			content: data.answer,
+			content: data.answer || data.response, // Support both 'answer' and 'response' keys
 			timestamp: new Date(),
-			sources: data.sources?.map((s: any, i: number) => {
-				const fileName = s.metadata?.file_name || 'Unknown source';
-				const page = s.metadata?.page_label ? ` (page ${s.metadata.page_label})` : '';
-				return `${fileName}${page}`;
-			}) || []
+			sources: data.sources || [] // Pass through detailed source objects
 		};
 		messages.update(m => [...m, assistantMsg]);
 
@@ -172,16 +168,14 @@ export function sendMessageWebSocket(userMessage: string) {
 
 			} else if (data.type === 'complete') {
 				// Backend sends final completion with sources
-				// Extract source filenames from source objects
-				const sourceNames = data.sources?.map((s: any, i: number) =>
-					`Source ${i + 1}: ${s.text.substring(0, 100)}...`
-				) || [];
+				// Pass through detailed source objects for SourceViewer
+				const sources = data.sources || [];
 
 				// Add sources to message
 				messages.update(msgs => {
 					return msgs.map(m =>
 						m.id === assistantMessageId
-							? { ...m, sources: sourceNames }
+							? { ...m, sources: sources }
 							: m
 					);
 				});

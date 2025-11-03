@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Message } from '$lib/stores';
 	import WorkflowVisualization from './WorkflowVisualization.svelte';
+	import SourceViewer from './SourceViewer.svelte';
 
 	export let message: Message;
 
@@ -37,14 +38,7 @@
 		{/if}
 
 		{#if message.sources && message.sources.length > 0}
-			<div class="sources">
-				<div class="sources-header">📚 Sources</div>
-				<div class="sources-list">
-					{#each message.sources as source}
-						<div class="source-item">{source}</div>
-					{/each}
-				</div>
-			</div>
+			<SourceViewer sources={message.sources} />
 		{/if}
 	</div>
 </div>
@@ -130,31 +124,5 @@
 		}
 	}
 
-	.sources {
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid #e0e0e0;
-	}
-
-	.sources-header {
-		font-weight: 600;
-		font-size: 0.875rem;
-		color: #666;
-		margin-bottom: 0.5rem;
-	}
-
-	.sources-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.source-item {
-		font-size: 0.85rem;
-		color: #555;
-		background: white;
-		padding: 0.5rem 0.75rem;
-		border-radius: 6px;
-		border: 1px solid #e0e0e0;
-	}
+	/* Source styling moved to SourceViewer component */
 </style>
