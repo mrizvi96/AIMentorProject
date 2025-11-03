@@ -38,7 +38,7 @@ class AgenticRAGService:
         os.environ.pop('HF_HUB_ENABLE_HF_TRANSFER', None)
 
         embed_model = HuggingFaceEmbedding(
-            model_name="all-MiniLM-L6-v2",  # Fast, lightweight embedding model
+            model_name=settings.embedding_model_name,
             device="cuda"  # Use GPU for fast embeddings
         )
         Settings.embed_model = embed_model
@@ -54,14 +54,23 @@ class AgenticRAGService:
 
         # Connect to ChromaDB
         logger.info("  Connecting to ChromaDB...")
-        chroma_client = chromadb.PersistentClient(path=settings.chroma_db_path)
-        chroma_collection = chroma_client.get_or_create_collection(name=settings.chroma_collection_name)
-        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+        try:
+            chroma_client = chromadb.PersistentClient(path=settings.chroma_db_path)
+            chroma_collection = chroma_client.get_or_create_collection(name=settings.chroma_collection_name)
+            vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 
-        self.index = VectorStoreIndex.from_vector_store(vector_store)
-        self.query_engine = self.index.as_query_engine(
-            similarity_top_k=settings.top_k_retrieval
-        )
+            self.index = VectorStoreIndex.from_vector_store(vector_store)
+            self.query_engine = self.index.as_query_engine(
+                similarity_top_k=settings.top_k_retrieval
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to ChromaDB: {e}")
+            raise RuntimeError(
+                f"ChromaDB initialization failed. "
+                f"Make sure the database exists at {settings.chroma_db_path} and has been populated with documents. "
+                f"Run 'python ingest.py' to create the database. "
+                f"Error: {str(e)}"
+            )
 
         # Build LangGraph workflow
         logger.info("  Building LangGraph workflow...")

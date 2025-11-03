@@ -83,9 +83,9 @@ def load_single_pdf(pdf_path: Path) -> List:
 def setup_embedding_model():
     """Setup embedding model using sentence-transformers (GPU-accelerated)"""
     try:
-        logger.info("Configuring embeddings via sentence-transformers (GPU-accelerated)")
+        logger.info(f"Configuring embeddings: {settings.embedding_model_name} (GPU-accelerated)")
         embed_model = HuggingFaceEmbedding(
-            model_name="all-MiniLM-L6-v2",  # Fast, lightweight embedding model
+            model_name=settings.embedding_model_name,
             device="cuda"  # Use GPU for fast embeddings
         )
         logger.info("✓ Embedding model configured (sentence-transformers on GPU)")
