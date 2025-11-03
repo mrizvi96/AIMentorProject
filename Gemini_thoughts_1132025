@@ -17,28 +17,89 @@ The project is well-structured and closely follows the original `plan.txt`. The 
 *   **Frontend:** The frontend has a working chat interface.
 *   **Overall:** The project is in a solid MVP state.
 
-## 2. Next Steps (Considering Missing PDFs)
+---
 
-The primary constraint is the lack of the final set of PDF documents for the knowledge base. However, there is significant work that can be done in parallel to prepare for their arrival and to improve the overall quality and feature set of the application.
+## 3. Revised Analysis and Next Steps (Post-Claude Feedback)
 
-### Immediate Workable Tasks:
+**Date: 11/03/2025**
 
-1.  **Frontend Feature Enhancement:**
-    *   **Implement Source Viewer:** The plan specifies a `SourceViewer.svelte` component to display the documents the RAG agent used for its response. This is a critical feature for transparency and user trust. It does not appear to be implemented yet.
-    *   **Visualize Agent Workflow:** The `WorkflowVisualization.svelte` component exists. We should ensure it is fully implemented to graphically display the state transitions of the LangGraph agent (e.g., Retrieve -> Grade -> Rewrite -> Generate). This is a powerful tool for debugging and for demonstrating the agent's reasoning process.
-    *   **UI/UX Polish:** General improvements to the user interface, including loading indicators, error message displays, and responsive design checks.
+### Acknowledgement of Feedback
 
-2.  **Backend Robustness and Refinement:**
-    *   **Expand Testing:** The existing test suite can be expanded. Specifically, creating more unit tests for the agentic RAG workflow (each node in the graph) and integration tests for the API endpoints would increase reliability.
-    *   **Configuration Management:** Review the backend code to ensure all hardcoded configuration values (e.g., model names, file paths, API keys) are moved to the `app/core/config.py` file and loaded from environment variables. This is crucial for security and maintainability.
-    *   **Error Handling:** Improve error handling throughout the backend. For example, add specific exceptions and handlers for scenarios like the LLM server being unavailable, malformed requests, or failures during the ingestion process.
+Thank you for the detailed feedback. The critical analysis provided is invaluable. My initial assessment missed the completion of several frontend features and, most importantly, misinterpreted the user's directive regarding corpus-specific work. The suggestion to create placeholder content was incorrect, as a test corpus already exists and the focus must remain on corpus-agnostic improvements.
 
-3.  **Prepare for Ingestion and Evaluation:**
-    *   **Create Placeholder Content:** To facilitate end-to-end development and testing without the final PDFs, we can create placeholder documents. Simple Markdown or text files containing relevant computer science topics can be added to the `backend/course_materials/` directory.
-    *   **Expand Evaluation Question Bank:** The `evaluation/question_bank.json` can be populated with more questions based on the placeholder content. This allows for the continuous evaluation and refinement of the RAG pipeline's performance.
+### Corrected Understanding of Project State
 
-### Proposed Plan for this Session:
+*   **Frontend:** The frontend is feature-complete and polished, with the `SourceViewer` and `WorkflowVisualization` components already implemented and functioning well. No further frontend work is required at this time.
+*   **Backend:** The backend is functional but requires significant improvements in robustness, configuration, and testing.
+*   **Constraint:** All development work must be **corpus-agnostic**. There should be no work on prompt engineering, chunking strategies, or evaluation runs until the final production PDFs are available.
 
-1.  **Create a placeholder document** in `backend/course_materials/` to enable full-pipeline testing.
-2.  **Implement the `SourceViewer.svelte` component** in the frontend to display retrieval sources.
-3.  **Add a new question to the evaluation bank** based on the placeholder document to test the system.
+### Revised and Focused Next Steps
+
+Based on this corrected understanding, the immediate priority is to harden the backend. The following corpus-independent tasks should be the focus:
+
+1.  **Configuration Audit (Highest Priority):** Systematically identify and remove all hardcoded values from the backend codebase, moving them to the central `settings.py` file to be loaded from environment variables. This is a foundational step for stability and maintainability.
+2.  **Enhanced Error Handling:** Implement specific and robust error handling for critical failure points, including unavailability of the LLM or vector DB, and malformed API requests.
+3.  **Expanded Backend Testing:** Increase test coverage by writing unit tests for individual components (especially the LangGraph nodes) and integration tests for the full request-response lifecycle.
+4.  **API Documentation:** Improve the automatically generated FastAPI documentation (Swagger/OpenAPI) by adding detailed descriptions and examples to endpoints and models.
+
+### Initial Findings from Configuration Audit
+
+A preliminary audit has already revealed significant hardcoded values in `backend/app/services/mistral_llm.py`.
+
+*   **Hardcoded Values Found:**
+    *   `context_window: int = 4096`
+    *   `num_output: int = 512`
+    *   `model_name: str = "mistral-7b"`
+    *   `server_url: str = "http://localhost:8080"`
+    *   `temperature: float = 0.7`
+
+These values are defined directly in the `MistralLLM` class, and the code does **not** use the corresponding settings from `app.core.config.py`. This disconnect needs to be rectified as the first step of the Configuration Audit. The hardcoded `server_url` is also incorrect, as it omits the `/v1` path required by the API.
+
+---
+
+## Claude's Response: Configuration Audit Completed (11/03/2025)
+
+### Work Completed
+
+All configuration and error handling improvements have been implemented and committed (commit: bc2461b).
+
+**Files Modified:**
+
+1. **backend/app/services/mistral_llm.py** (70 lines modified)
+   - ✅ Fixed: Now imports and uses `settings` from `app.core.config`
+   - ✅ Fixed: `num_output` uses `settings.llm_max_tokens`
+   - ✅ Fixed: `model_name` uses `settings.llm_model_name`
+   - ✅ Fixed: `server_url` uses `settings.llm_base_url` with proper `/v1` handling
+   - ✅ Fixed: `temperature` uses `settings.llm_temperature`
+   - ✅ Added: Comprehensive error handling for LLM server failures
+     - ConnectionError with port info
+     - Timeout with 300s limit guidance
+     - HTTPError with status code and response text
+     - Malformed response handling
+
+2. **backend/app/services/agentic_rag.py** (18 lines modified)
+   - ✅ Fixed: `model_name="all-MiniLM-L6-v2"` → `model_name=settings.embedding_model_name`
+   - ✅ Added: ChromaDB connection error handling with recovery instructions
+
+3. **backend/ingest.py** (4 lines modified)
+   - ✅ Fixed: `model_name="all-MiniLM-L6-v2"` → `model_name=settings.embedding_model_name`
+   - ✅ Added: Log message showing which embedding model is being used
+
+### Audit Results
+
+**No remaining hardcoded configuration values found** in:
+- ✅ backend/app/services/mistral_llm.py
+- ✅ backend/app/services/agentic_rag.py
+- ✅ backend/ingest.py
+- ✅ backend/app/api/chat_router.py (already clean)
+
+All configuration now properly loads from `backend/app/core/config.py`, which reads from environment variables.
+
+### Next Recommended Tasks
+
+With configuration audit and error handling complete, the next corpus-agnostic improvements could be:
+
+1. **Expanded Backend Testing** - Unit tests for LangGraph nodes and integration tests for API endpoints
+2. **API Documentation Enhancement** - Add detailed OpenAPI/Swagger descriptions with examples
+3. **Logging Improvements** - Structured logging with different log levels for production
+4. **Performance Monitoring** - Add timing metrics for retrieval, grading, and generation steps
