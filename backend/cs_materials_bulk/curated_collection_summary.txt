@@ -1,0 +1,32 @@
+
+======================================================================
+DOWNLOAD SUMMARY
+======================================================================
+Generated: 2025-11-04T21:21:10.510190
+
+License Validation:
+  Total books in catalog: 16
+  Approved (CC BY, CC BY-SA, CC0, PD): 9
+  Rejected (NC, ND, or other): 7
+
+Downloads:
+  Successfully downloaded: 6
+  Failed: 3
+  Total size: 0.06 GB
+  Target: 10.0 GB
+  Progress: 0.6%
+
+Downloaded Books:
+  ✓ Open Data Structures (Python Edition) (CC BY 2.5)
+  ✓ Open Data Structures (Java Edition) (CC BY 2.5)
+  ✓ Open Data Structures (C++ Edition) (CC BY 2.5)
+  ✓ Mathematics for Computer Science (CC BY-SA 3.0)
+  ✓ Algorithms by Jeff Erickson (CC BY 4.0)
+  ✓ Introduction to Theoretical Computer Science (CC BY-SA 4.0)
+
+Failed Downloads:
+  ✗ SICP - JavaScript Edition
+  ✗ Python Programming
+  ✗ Dive Into Python 3
+
+======================================================================

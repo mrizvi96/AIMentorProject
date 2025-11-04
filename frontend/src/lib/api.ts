@@ -1,8 +1,17 @@
 import { messages, isLoading, currentWorkflow, error } from './stores';
 import type { Message, WorkflowStep } from './stores';
 
-const API_BASE = 'http://localhost:8000';
-const WS_BASE = 'ws://localhost:8000';
+// Detect if we're running on Runpod proxy or localhost
+const isRunpodProxy = typeof window !== 'undefined' && window.location.hostname.includes('proxy.runpod.net');
+
+// Use Runpod proxy URLs if detected, otherwise use localhost
+const API_BASE = isRunpodProxy
+	? window.location.origin.replace('-5173.', '-8000.')  // Replace frontend port with backend port
+	: 'http://localhost:8000';
+
+const WS_BASE = isRunpodProxy
+	? API_BASE.replace('https://', 'wss://').replace('http://', 'ws://')
+	: 'ws://localhost:8000';
 
 let socket: WebSocket | null = null;
 let currentConversationId = crypto.randomUUID();

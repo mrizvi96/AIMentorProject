@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Open Data Structures",
+    "url": "http://opendatastructures.org/ods-python.pdf",
+    "source_institution": "Open Textbook Library",
+    "content_type": "textbook",
+    "license": "CC BY 2.5",
+    "license_verified": true,
+    "authors": [
+      "Pat Morin"
+    ],
+    "year": null,
+    "file_size_bytes": 1457027,
+    "download_status": "completed",
+    "local_path": "cs_materials_bulk/Open Textbook Library_Open_Data_Structures.pdf",
+    "download_date": "2025-11-04T21:17:26.073550"
+  }
+]

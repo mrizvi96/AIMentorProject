@@ -1,0 +1,21 @@
+
+======================================================================
+Bulk Download Summary
+======================================================================
+Generated: 2025-11-04T21:17:28.074951
+
+Statistics:
+  Total sources discovered: 1
+  Successfully downloaded: 1
+  Failed: 0
+  Total size: 0.00 GB
+  Target size: 10.0 GB
+  Progress: 0.0%
+
+By Institution:
+  Open Textbook Library: 1 items (0.00 GB)
+
+By License:
+  CC BY 2.5: 1
+
+======================================================================

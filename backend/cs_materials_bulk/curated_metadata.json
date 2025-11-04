@@ -1,0 +1,73 @@
+{
+  "collection_date": "2025-11-04T21:21:10.510498",
+  "total_books": 16,
+  "approved": 9,
+  "rejected": 7,
+  "downloaded": 6,
+  "failed": 3,
+  "total_size_bytes": 65000973,
+  "books": [
+    {
+      "title": "Open Data Structures (Python Edition)",
+      "url": "http://opendatastructures.org/ods-python.pdf",
+      "source": "opendatastructures.org",
+      "license": "CC BY 2.5",
+      "authors": [
+        "Pat Morin"
+      ],
+      "size_mb_estimate": 1.5
+    },
+    {
+      "title": "Open Data Structures (Java Edition)",
+      "url": "http://opendatastructures.org/ods-java.pdf",
+      "source": "opendatastructures.org",
+      "license": "CC BY 2.5",
+      "authors": [
+        "Pat Morin"
+      ],
+      "size_mb_estimate": 1.5
+    },
+    {
+      "title": "Open Data Structures (C++ Edition)",
+      "url": "http://opendatastructures.org/ods-cpp.pdf",
+      "source": "opendatastructures.org",
+      "license": "CC BY 2.5",
+      "authors": [
+        "Pat Morin"
+      ],
+      "size_mb_estimate": 1.5
+    },
+    {
+      "title": "Mathematics for Computer Science",
+      "url": "https://courses.csail.mit.edu/6.042/spring18/mcs.pdf",
+      "source": "MIT OpenCourseWare",
+      "license": "CC BY-SA 3.0",
+      "authors": [
+        "Eric Lehman",
+        "F. Thomson Leighton",
+        "Albert R. Meyer"
+      ],
+      "size_mb_estimate": 6.0
+    },
+    {
+      "title": "Algorithms by Jeff Erickson",
+      "url": "http://jeffe.cs.illinois.edu/teaching/algorithms/book/Algorithms-JeffE.pdf",
+      "source": "University of Illinois",
+      "license": "CC BY 4.0",
+      "authors": [
+        "Jeff Erickson"
+      ],
+      "size_mb_estimate": 8.0
+    },
+    {
+      "title": "Introduction to Theoretical Computer Science",
+      "url": "https://files.boazbarak.org/introtcs/lnotes_book.pdf",
+      "source": "Boaz Barak",
+      "license": "CC BY-SA 4.0",
+      "authors": [
+        "Boaz Barak"
+      ],
+      "size_mb_estimate": 10.0
+    }
+  ]
+}

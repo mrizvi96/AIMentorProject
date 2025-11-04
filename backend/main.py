@@ -30,6 +30,7 @@ app.add_middleware(
         "http://localhost:5173",  # Svelte dev server
         "http://127.0.0.1:5173",
     ],
+    allow_origin_regex=r"https://.*\.proxy\.runpod\.net",  # Allow all Runpod proxy URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

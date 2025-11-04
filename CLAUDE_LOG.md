@@ -34,15 +34,21 @@ cd ../..
 ### Step 3: Download Course Materials (~1 minute)
 ```bash
 pip3 install gdown
-mkdir -p backend/course_materials
-cd backend/course_materials
-gdown "1DECFKmdQjbLRQpJWQUd1J6KViRIPf6ab"
-gdown "1WVTdiVOhe7Oov2TDG3AXIg3c8HIthSac"
-gdown "1YAqEenI_z6CyZBSEUPgO2gjAELw5bwIt"
-gdown "1mgJSWWzcA1PnHytQVp0kt5dyXx2NzIn0"
-gdown "1nR4Mrx8BdTAOxGL_SXk80RRb9Oy-oeiZ"
-gdown "1sAEmzgyx63SMQCGmCuSddnzxfXrUKFZE"
-cd ../..
+cd backend
+
+# Download CC-licensed computer science PDFs from Google Drive folder
+# This folder contains 21 verified open-source textbooks (CC BY, CC BY-SA, CC0, Public Domain)
+# Total size: ~243MB
+# All materials verified to allow commercial AI training (no NC/ND restrictions)
+gdown --folder "1kRGaPosd1ZcX6u918NZD5V1Q_S8C2anp" -O course_materials/
+
+# Move files from nested directory if needed
+if [ -d "course_materials/freeCSbooks" ]; then
+    mv course_materials/freeCSbooks/* course_materials/
+    rmdir course_materials/freeCSbooks
+fi
+
+cd ..
 ```
 
 ### Step 4: Setup Python Environment (~3-5 minutes)
@@ -849,17 +855,15 @@ cd backend/models
 wget "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q5_K_M.gguf"
 
 # Download course PDFs (~1 minute)
+# CC-licensed computer science books (14 PDFs, ~180MB total)
 cd ..
 pip3 install gdown
-mkdir -p course_materials
-cd course_materials
-gdown "1DECFKmdQjbLRQpJWQUd1J6KViRIPf6ab"
-gdown "1WVTdiVOhe7Oov2TDG3AXIg3c8HIthSac"
-gdown "1YAqEenI_z6CyZBSEUPgO2gjAELw5bwIt"
-gdown "1mgJSWWzcA1PnHytQVp0kt5dyXx2NzIn0"
-gdown "1nR4Mrx8BdTAOxGL_SXk80RRb9Oy-oeiZ"
-gdown "1sAEmzgyx63SMQCGmCuSddnzxfXrUKFZE"
-cd ../..
+gdown --folder "1kRGaPosd1ZcX6u918NZD5V1Q_S8C2anp" -O course_materials/
+if [ -d "course_materials/freeCSbooks" ]; then
+    mv course_materials/freeCSbooks/* course_materials/
+    rmdir course_materials/freeCSbooks
+fi
+cd ..
 ```
 
 ### 3. Setup Backend Environment

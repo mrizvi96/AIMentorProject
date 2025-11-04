@@ -1,0 +1,181 @@
+{
+  "license_requirements": {
+    "acceptable_licenses": [
+      "CC BY",
+      "CC BY 2.0",
+      "CC BY 2.5",
+      "CC BY 3.0",
+      "CC BY 4.0",
+      "CC BY-SA",
+      "CC BY-SA 2.0",
+      "CC BY-SA 2.5",
+      "CC BY-SA 3.0",
+      "CC BY-SA 4.0",
+      "CC0",
+      "Public Domain",
+      "MIT License",
+      "Apache 2.0"
+    ],
+    "prohibited_restrictions": [
+      "NC",
+      "ND",
+      "NonCommercial",
+      "NoDerivatives",
+      "Non-Commercial",
+      "No-Derivatives"
+    ],
+    "validation_strategy": "REJECT if prohibited restrictions found, ACCEPT only if explicitly listed in acceptable_licenses"
+  },
+  "repositories": [
+    {
+      "name": "Directory of Open Access Books (DOAB)",
+      "url": "https://directory.doabooks.org/",
+      "api_endpoint": "https://directory.doabooks.org/oai",
+      "license_policy": "Mixed - must filter per-book",
+      "programmatic_access": true,
+      "method": "OAI-PMH API",
+      "computer_science_subject_codes": ["004"],
+      "notes": "Use OAI-PMH to harvest metadata, filter by license field"
+    },
+    {
+      "name": "OpenStax",
+      "url": "https://openstax.org/",
+      "api_endpoint": null,
+      "license_policy": "All CC BY 4.0",
+      "programmatic_access": false,
+      "cs_availability": "Limited (mostly math/science)",
+      "notes": "Safe source - all content is CC BY 4.0, but limited CS titles"
+    },
+    {
+      "name": "Open Textbook Library",
+      "url": "https://open.umn.edu/opentextbooks",
+      "api_endpoint": null,
+      "license_policy": "Mixed - must verify per-book",
+      "programmatic_access": false,
+      "method": "Web scraping required",
+      "filter_strategy": "Parse HTML, extract license from book detail pages",
+      "notes": "Each book page has license badge - must be verified before download"
+    },
+    {
+      "name": "arXiv.org",
+      "url": "https://arxiv.org/",
+      "api_endpoint": "http://export.arxiv.org/api/query",
+      "license_policy": "Mixed - mostly arxiv-1.0 (non-exclusive), some CC",
+      "programmatic_access": true,
+      "method": "arXiv API",
+      "filter_strategy": "Query API, filter by license field for CC licenses only",
+      "notes": "Most papers use arXiv's non-exclusive license. Filter for explicit CC licenses in metadata"
+    },
+    {
+      "name": "OpenIntro Statistics/CS",
+      "url": "https://www.openintro.org/",
+      "license_policy": "CC BY-SA 3.0",
+      "programmatic_access": false,
+      "cs_availability": "Limited",
+      "notes": "Small curated collection, all CC BY-SA 3.0"
+    },
+    {
+      "name": "Green Tea Press",
+      "url": "https://greenteapress.com/wp/",
+      "license_policy": "CC BY-NC (PROHIBITED for our use)",
+      "programmatic_access": false,
+      "filter_result": "REJECT - All books have NC restriction",
+      "notes": "Excellent content but all CC BY-NC - requires author permission for derivative works"
+    },
+    {
+      "name": "LibreTexts",
+      "url": "https://eng.libretexts.org/Bookshelves/Computer_Science",
+      "license_policy": "CC BY-NC-SA (PROHIBITED)",
+      "programmatic_access": true,
+      "filter_result": "REJECT - Platform default is CC BY-NC-SA",
+      "notes": "Large collection but default license includes NC restriction"
+    }
+  ],
+  "manual_curated_sources": {
+    "description": "Pre-verified individual textbooks with acceptable licenses",
+    "textbooks": [
+      {
+        "title": "Algorithms",
+        "authors": ["Jeff Erickson"],
+        "url": "http://jeffe.cs.illinois.edu/teaching/algorithms/book/Algorithms-JeffE.pdf",
+        "license": "CC BY 4.0",
+        "verified": true,
+        "subject": ["Algorithms"],
+        "file_size_mb": 25
+      },
+      {
+        "title": "Open Data Structures",
+        "authors": ["Pat Morin"],
+        "url": "http://opendatastructures.org/ods-python.pdf",
+        "license": "CC BY 2.5",
+        "verified": true,
+        "subject": ["Data Structures"],
+        "file_size_mb": 2
+      },
+      {
+        "title": "Mathematics for Computer Science",
+        "authors": ["Eric Lehman", "F. Thomson Leighton", "Albert R. Meyer"],
+        "url": "https://courses.csail.mit.edu/6.042/spring18/mcs.pdf",
+        "license": "CC BY-SA 3.0",
+        "verified": true,
+        "subject": ["Discrete Mathematics"],
+        "file_size_mb": 11
+      },
+      {
+        "title": "Structure and Interpretation of Computer Programs",
+        "authors": ["Harold Abelson", "Gerald Jay Sussman"],
+        "url": "https://web.mit.edu/6.001/6.037/sicp.pdf",
+        "license": "CC BY-SA 4.0",
+        "verified": true,
+        "subject": ["Programming", "Lisp"],
+        "file_size_mb": 7
+      },
+      {
+        "title": "Foundations of Computer Science",
+        "authors": ["Al Aho", "Jeff Ullman"],
+        "url": "http://infolab.stanford.edu/~ullman/focs.html",
+        "license": "Public Domain",
+        "verified": true,
+        "subject": ["Computer Science Theory"],
+        "notes": "HTML format, may need conversion"
+      }
+    ]
+  },
+  "automated_discovery_plan": {
+    "phase_1": "DOAB API Harvest",
+    "phase_1_steps": [
+      "Query DOAB OAI-PMH API for CS subject codes",
+      "Parse XML responses for book metadata",
+      "Extract license field from metadata",
+      "Filter for acceptable licenses ONLY",
+      "Reject any with NC or ND restrictions",
+      "Download PDF links that pass validation"
+    ],
+    "phase_2": "Web Scraping with License Validation",
+    "phase_2_sources": ["Open Textbook Library"],
+    "phase_2_steps": [
+      "Scrape book listing pages",
+      "For each book, visit detail page",
+      "Extract license badge/text",
+      "Validate against acceptable list",
+      "ONLY download if license is verified acceptable",
+      "Log all rejected books with reasons"
+    ],
+    "phase_3": "Manual Curation",
+    "phase_3_steps": [
+      "Maintain curated list of verified books",
+      "Periodically check for new editions",
+      "Verify licenses haven't changed"
+    ]
+  },
+  "validation_workflow": {
+    "step_1": "Extract license text from metadata/webpage",
+    "step_2": "Normalize license string (uppercase, remove extra spaces)",
+    "step_3": "Check against prohibited_restrictions list - if match found, REJECT",
+    "step_4": "Check against acceptable_licenses list - if match found, ACCEPT",
+    "step_5": "If uncertain, flag for manual review",
+    "step_6": "After download, verify license in PDF metadata",
+    "step_7": "Double-check first 5 pages of PDF for license statement",
+    "logging": "Log all validation decisions with full license text for audit trail"
+  }
+}

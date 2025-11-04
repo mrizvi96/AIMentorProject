@@ -1,0 +1,170 @@
+{
+  "description": "Curated list of high-quality CS course materials from top universities with verified open licenses",
+  "target_size_gb": 10,
+  "universities": [
+    {
+      "name": "University of Washington - Paul G. Allen School",
+      "courses": [
+        {
+          "course_code": "CSE 332",
+          "title": "Data Structures and Parallelism",
+          "materials_url": "https://courses.cs.washington.edu/courses/cse332/",
+          "license": "Varies by material - check individual items",
+          "note": "Some lecture notes may be CC BY-SA, need to verify"
+        }
+      ]
+    },
+    {
+      "name": "Cornell University",
+      "courses": [
+        {
+          "course_code": "CS 3110",
+          "title": "Data Structures and Functional Programming",
+          "materials_url": "https://www.cs.cornell.edu/courses/cs3110/",
+          "textbook_url": "https://cs3110.github.io/textbook/",
+          "license": "CC BY-NC-SA 4.0",
+          "note": "REJECT - NonCommercial license"
+        }
+      ]
+    },
+    {
+      "name": "Brown University",
+      "courses": [
+        {
+          "title": "Programming and Programming Languages (PAPL)",
+          "authors": ["Shriram Krishnamurthi"],
+          "url": "https://papl.cs.brown.edu/",
+          "license": "CC BY-NC-SA 4.0",
+          "note": "REJECT - NonCommercial"
+        }
+      ]
+    }
+  ],
+  "verified_open_sources": {
+    "description": "These sources are verified to have acceptable licenses for bulk download",
+    "sources": [
+      {
+        "name": "OpenDSA Project",
+        "url": "https://opendsa-server.cs.vt.edu/",
+        "description": "Interactive data structures and algorithms textbook",
+        "license": "MIT License + CC BY-SA 4.0",
+        "content_type": "Interactive textbook with PDFs",
+        "subjects": ["Data Structures", "Algorithms"],
+        "institution": "Virginia Tech",
+        "estimated_size_mb": 50,
+        "verified": true
+      },
+      {
+        "name": "Algorithmica",
+        "url": "https://en.algorithmica.org/",
+        "description": "Practical algorithms textbook",
+        "license": "CC BY-SA 4.0",
+        "content_type": "Web-based with PDF export",
+        "subjects": ["Algorithms", "Performance Engineering"],
+        "author": "Sergey Slotin",
+        "estimated_size_mb": 20,
+        "verified": true
+      },
+      {
+        "name": "Runestone Academy",
+        "url": "https://runestone.academy/",
+        "description": "Interactive CS textbooks (multiple titles)",
+        "license": "CC BY-NC-SA 3.0",
+        "note": "REJECT - All content is NonCommercial",
+        "verified": true,
+        "decision": "REJECT"
+      },
+      {
+        "name": "Teach Yourself CS",
+        "url": "https://teachyourselfcs.com/",
+        "description": "Curated list of CS resources, many are open",
+        "license": "Mixed - individual resources vary",
+        "note": "Not a content source, but lists many open resources",
+        "action": "Mine this list for individual open resources"
+      }
+    ]
+  },
+  "individual_lecture_notes": {
+    "description": "Individual course lecture note PDFs verified to have acceptable licenses",
+    "notes": [
+      {
+        "title": "CS 161 Computer Security - UC Berkeley",
+        "url": "https://textbook.cs161.org/",
+        "license": "CC BY-NC-SA 4.0",
+        "decision": "REJECT - NonCommercial"
+      },
+      {
+        "title": "The Busy Beaver Frontier",
+        "author": "Scott Aaronson",
+        "url": "https://www.scottaaronson.com/papers/bb.pdf",
+        "license": "Check paper - likely author's copyright",
+        "subjects": ["Computability Theory"],
+        "decision": "MANUAL_REVIEW"
+      }
+    ]
+  },
+  "strategies_for_10gb": {
+    "strategy_1": {
+      "name": "arXiv CS Papers Bulk Download",
+      "description": "Download papers with explicit CC licenses from arXiv CS categories",
+      "api": "http://export.arxiv.org/api/query",
+      "filter": "Papers with cc-by in metadata",
+      "estimated_papers": 5000,
+      "estimated_size_gb": 5,
+      "implementation": "Use arXiv API, filter by license field = CC BY"
+    },
+    "strategy_2": {
+      "name": "DOAB Computer Science Books",
+      "description": "Harvest all CS books from Directory of Open Access Books",
+      "api": "OAI-PMH",
+      "filter": "DDC code 004 (Computer Science), license = CC BY or CC BY-SA",
+      "estimated_books": 200,
+      "estimated_size_gb": 2,
+      "implementation": "OAI-PMH harvesting with license validation"
+    },
+    "strategy_3": {
+      "name": "Internet Archive CS Textbooks",
+      "description": "Public domain and CC-licensed CS books from Internet Archive",
+      "url": "https://archive.org/details/texts",
+      "filter": "Subject: Computer Science, License: CC or Public Domain",
+      "estimated_items": 500,
+      "estimated_size_gb": 3,
+      "implementation": "Internet Archive API with metadata filtering"
+    },
+    "strategy_4": {
+      "name": "Project Gutenberg Technical Books",
+      "description": "Public domain technical and CS books",
+      "url": "https://www.gutenberg.org/",
+      "filter": "Subject: Computers, all are Public Domain",
+      "estimated_books": 100,
+      "estimated_size_gb": 0.5,
+      "note": "Older content, but all public domain"
+    }
+  },
+  "implementation_priority": [
+    {
+      "priority": 1,
+      "source": "DOAB",
+      "reason": "Well-structured API, reliable license metadata, good CS coverage",
+      "expected_gb": 2
+    },
+    {
+      "priority": 2,
+      "source": "arXiv",
+      "reason": "Massive repository, API access, growing CC BY adoption",
+      "expected_gb": 5
+    },
+    {
+      "priority": 3,
+      "source": "Internet Archive",
+      "reason": "Huge collection, but needs careful filtering",
+      "expected_gb": 2
+    },
+    {
+      "priority": 4,
+      "source": "Manual curation",
+      "reason": "High-quality individual sources found through research",
+      "expected_gb": 1
+    }
+  ]
+}
