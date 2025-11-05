@@ -1,8 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageList from '$lib/components/MessageList.svelte';
+	import AuthButton from '$lib/components/AuthButton.svelte';
 	import { error } from '$lib/stores';
 	import { sendMessageHTTP } from '$lib/api';
+	import { checkAuth } from '$lib/auth';
+
+	// Check authentication status on mount
+	onMount(async () => {
+		await checkAuth();
+	});
 
 	async function handleSend(message: string) {
 		try {
@@ -25,9 +33,12 @@
 				<h1>AI Tutor</h1>
 				<p>Intelligent CS tutor powered by RAG</p>
 			</div>
-			<div class="status-indicator">
-				<span class="status-dot"></span>
-				<span>Live</span>
+			<div class="header-right">
+				<div class="status-indicator">
+					<span class="status-dot"></span>
+					<span>Live</span>
+				</div>
+				<AuthButton />
 			</div>
 		</div>
 	</header>
@@ -48,22 +59,23 @@
 	:global(body) {
 		margin: 0;
 		padding: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
-			Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		font-family: 'Courier New', monospace;
+		background: #000000;
 	}
 
 	.app-container {
 		height: 100vh;
 		display: flex;
 		flex-direction: column;
-		background: #fafafa;
+		background: #000000;
 	}
 
 	header {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: linear-gradient(135deg, #001100 0%, #003300 100%);
+		color: #00ff00;
 		padding: 1.5rem 2rem;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3);
+		border-bottom: 2px solid #00ff00;
 	}
 
 	.header-content {
@@ -72,6 +84,12 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
 	}
 
 	header h1 {
@@ -90,18 +108,20 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		background: rgba(255, 255, 255, 0.2);
+		background: rgba(0, 255, 0, 0.1);
 		padding: 0.5rem 1rem;
 		border-radius: 20px;
 		font-size: 0.875rem;
+		border: 1px solid #00ff00;
 	}
 
 	.status-dot {
 		width: 8px;
 		height: 8px;
-		background: #4caf50;
+		background: #00ff00;
 		border-radius: 50%;
 		animation: pulse-dot 2s ease-in-out infinite;
+		box-shadow: 0 0 10px #00ff00;
 	}
 
 	@keyframes pulse-dot {
@@ -114,11 +134,12 @@
 	}
 
 	.error-banner {
-		background: #fee;
-		color: #c33;
+		background: #1a0000;
+		color: #ff0000;
 		padding: 1rem 2rem;
-		border-bottom: 1px solid #fcc;
+		border-bottom: 1px solid #ff0000;
 		text-align: center;
+		font-family: 'Courier New', monospace;
 	}
 
 	main {
@@ -129,7 +150,9 @@
 		max-width: 1200px;
 		width: 100%;
 		margin: 0 auto;
-		background: white;
-		box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+		background: #000000;
+		box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+		border-left: 1px solid #00ff00;
+		border-right: 1px solid #00ff00;
 	}
 </style>

@@ -70,44 +70,54 @@
 	.role-badge {
 		font-weight: 600;
 		font-size: 0.875rem;
-		color: #555;
+		color: #00ff00;
+		font-family: 'Courier New', monospace;
 	}
 
 	.message.user .role-badge {
-		color: #667eea;
+		color: #00ff00;
+		text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
 	}
 
 	.timestamp {
 		font-size: 0.75rem;
-		color: #999;
+		color: #00ff00;
+		opacity: 0.6;
+		font-family: 'Courier New', monospace;
 	}
 
 	.message-content {
-		background: #f8f9fa;
+		background: rgba(0, 255, 0, 0.05);
 		padding: 1rem 1.25rem;
 		border-radius: 12px;
-		border-left: 3px solid #ddd;
+		border-left: 3px solid #00ff00;
+		border: 1px solid #00ff00;
 	}
 
 	.message.user .message-content {
-		background: #f0f3ff;
-		border-left-color: #667eea;
+		background: rgba(0, 255, 0, 0.08);
+		border-left-color: #00ff00;
+		box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
 	}
 
 	.message.assistant .message-content {
-		background: #f8faf8;
-		border-left-color: #4caf50;
+		background: rgba(0, 255, 0, 0.05);
+		border-left-color: #00ff00;
 	}
 
 	.content-text {
 		line-height: 1.6;
 		white-space: pre-wrap;
 		word-wrap: break-word;
+		color: #00ff00;
+		font-family: 'Courier New', monospace;
 	}
 
 	.content-placeholder {
-		color: #999;
+		color: #00ff00;
 		font-style: italic;
+		opacity: 0.7;
+		font-family: 'Courier New', monospace;
 	}
 
 	.thinking-indicator {

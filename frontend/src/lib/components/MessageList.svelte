@@ -60,6 +60,7 @@
 		overflow-y: auto;
 		padding: 1rem 0;
 		scroll-behavior: smooth;
+		background: #000000;
 	}
 
 	.welcome-screen {
@@ -78,14 +79,18 @@
 	.welcome-content h2 {
 		font-size: 2rem;
 		margin-bottom: 1rem;
-		color: #333;
+		color: #00ff00;
+		font-family: 'Courier New', monospace;
+		text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 	}
 
 	.welcome-content > p {
 		font-size: 1.1rem;
-		color: #666;
+		color: #00ff00;
 		margin-bottom: 2rem;
 		line-height: 1.6;
+		font-family: 'Courier New', monospace;
+		opacity: 0.8;
 	}
 
 	.features {
@@ -100,9 +105,10 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 1rem;
-		background: #f8f9fa;
+		background: rgba(0, 255, 0, 0.05);
 		border-radius: 8px;
-		border-left: 3px solid #667eea;
+		border-left: 3px solid #00ff00;
+		border: 1px solid #00ff00;
 	}
 
 	.feature-icon {
@@ -110,14 +116,17 @@
 	}
 
 	.feature span:last-child {
-		color: #555;
+		color: #00ff00;
 		font-size: 0.95rem;
+		font-family: 'Courier New', monospace;
 	}
 
 	.prompt {
 		margin-top: 2rem;
 		font-size: 1.1rem;
 		font-weight: 600;
-		color: #667eea;
+		color: #00ff00;
+		font-family: 'Courier New', monospace;
+		text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 	}
 </style>

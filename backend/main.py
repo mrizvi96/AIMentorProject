@@ -8,6 +8,7 @@ import logging
 
 from app.api.chat_router import router as chat_router
 from app.api.chat_ws import router as chat_ws_router
+from app.api.auth_router import router as auth_router
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,7 @@ app.add_middleware(
 # Include routers
 app.include_router(chat_router)
 app.include_router(chat_ws_router)
+app.include_router(auth_router, prefix="/api", tags=["authentication"])
 
 @app.get("/")
 def health_check():

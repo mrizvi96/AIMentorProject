@@ -28,7 +28,7 @@
 			placeholder="Ask a computer science question..."
 			disabled={$isLoading}
 			rows="1"
-		/>
+		></textarea>
 		<button on:click={handleSubmit} disabled={$isLoading || !inputValue.trim()} class="send-btn">
 			{#if $isLoading}
 				<span class="loading-spinner"></span>
@@ -38,14 +38,23 @@
 				</svg>
 			{/if}
 		</button>
+		<div class="mic-container">
+			<button class="mic-btn" disabled title="Coming soon!">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+					<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" stroke-width="2"/>
+					<path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+			</button>
+			<span class="coming-soon">Talk-to-text features are coming soon!</span>
+		</div>
 	</div>
 </div>
 
 <style>
 	.chat-input-container {
 		padding: 1.5rem;
-		background: white;
-		border-top: 1px solid #e0e0e0;
+		background: #000000;
+		border-top: 2px solid #00ff00;
 	}
 
 	.input-wrapper {
@@ -53,47 +62,58 @@
 		gap: 0.75rem;
 		max-width: 900px;
 		margin: 0 auto;
+		align-items: flex-start;
 	}
 
 	textarea {
 		flex: 1;
 		padding: 0.875rem 1rem;
-		border: 2px solid #e0e0e0;
+		border: 2px solid #00ff00;
 		border-radius: 12px;
 		font-size: 0.95rem;
-		font-family: inherit;
+		font-family: 'Courier New', monospace;
 		resize: none;
 		outline: none;
-		transition: border-color 0.2s;
+		transition: border-color 0.2s, box-shadow 0.2s;
 		min-height: 48px;
 		max-height: 200px;
+		background: #001100;
+		color: #00ff00;
+	}
+
+	textarea::placeholder {
+		color: #00ff0080;
 	}
 
 	textarea:focus {
-		border-color: #667eea;
+		border-color: #00ff00;
+		box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
 	}
 
 	textarea:disabled {
-		background: #f5f5f5;
+		background: #001100;
 		cursor: not-allowed;
+		opacity: 0.5;
 	}
 
 	.send-btn {
 		padding: 0 1.25rem;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
-		border: none;
+		background: #00ff00;
+		color: #000000;
+		border: 2px solid #00ff00;
 		border-radius: 12px;
 		cursor: pointer;
-		transition: transform 0.2s, opacity 0.2s;
+		transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		min-width: 48px;
+		font-weight: bold;
 	}
 
 	.send-btn:hover:not(:disabled) {
 		transform: scale(1.05);
+		box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
 	}
 
 	.send-btn:active:not(:disabled) {
@@ -101,15 +121,47 @@
 	}
 
 	.send-btn:disabled {
-		opacity: 0.5;
+		opacity: 0.3;
 		cursor: not-allowed;
+	}
+
+	.mic-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.mic-btn {
+		padding: 0.75rem;
+		background: rgba(0, 255, 0, 0.1);
+		color: #00ff00;
+		border: 2px solid #00ff00;
+		border-radius: 12px;
+		cursor: not-allowed;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 48px;
+		min-height: 48px;
+		opacity: 0.5;
+	}
+
+	.coming-soon {
+		font-size: 0.7rem;
+		color: #00ff00;
+		text-align: center;
+		max-width: 120px;
+		line-height: 1.2;
+		font-family: 'Courier New', monospace;
+		opacity: 0.7;
 	}
 
 	.loading-spinner {
 		width: 16px;
 		height: 16px;
-		border: 2px solid rgba(255, 255, 255, 0.3);
-		border-top-color: white;
+		border: 2px solid rgba(0, 0, 0, 0.3);
+		border-top-color: #000000;
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}

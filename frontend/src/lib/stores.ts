@@ -33,3 +33,15 @@ export const messages = writable<Message[]>([]);
 export const isLoading = writable(false);
 export const error = writable<string | null>(null);
 export const currentWorkflow = writable<WorkflowStep[]>([]);
+
+// Authentication stores
+export interface User {
+	github_id: number;
+	github_login: string;
+	github_name?: string;
+	github_avatar_url?: string;
+	session_id: string;
+}
+
+export const currentUser = writable<User | null>(null);
+export const isAuthenticated = writable(false);
