@@ -30,21 +30,35 @@ class MistralLLM(CustomLLM):
     def complete(self, prompt: str, **kwargs: Any) -> CompletionResponse:
         """Call llama.cpp server for completion"""
         try:
+            request_data = {
+                "prompt": prompt,
+                "max_tokens": kwargs.get("max_tokens", self.num_output),
+                "temperature": kwargs.get("temperature", self.temperature),
+                "stop": kwargs.get("stop", []),  # IMPROVEMENT: Removed "\n\n" stop sequence for fuller responses
+            }
+
+            # Debug logging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"LLM Request - Prompt length: {len(prompt)} chars")
+            logger.info(f"LLM Request - Prompt preview: {prompt[:200]}...")
+            logger.info(f"LLM Request - Max tokens: {request_data['max_tokens']}, Temp: {request_data['temperature']}")
+
             response = requests.post(
                 f"{self.server_url}/v1/completions",
-                json={
-                    "prompt": prompt,
-                    "max_tokens": kwargs.get("max_tokens", self.num_output),
-                    "temperature": kwargs.get("temperature", self.temperature),
-                    "stop": kwargs.get("stop", ["\n\n"]),
-                },
+                json=request_data,
                 timeout=300
             )
             response.raise_for_status()
             result = response.json()
 
+            response_text = result["choices"][0]["text"]
+            logger.info(f"LLM Response - Text length: {len(response_text)} chars")
+            logger.info(f"LLM Response - Text preview: {repr(response_text[:200])}")
+            logger.info(f"LLM Response - Finish reason: {result['choices'][0].get('finish_reason', 'unknown')}")
+
             return CompletionResponse(
-                text=result["choices"][0]["text"],
+                text=response_text,
                 raw=result,
             )
         except requests.exceptions.ConnectionError as e:

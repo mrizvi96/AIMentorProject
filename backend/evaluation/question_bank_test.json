@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-10-30",
+    "description": "Diverse question bank for evaluating AI Mentor RAG system",
+    "total_questions": 20,
+    "categories": [
+      "factual_recall",
+      "conceptual_understanding",
+      "code_analysis",
+      "problem_solving",
+      "comparative_analysis"
+    ]
+  },
+  "questions": [
+    {
+      "id": "Q001",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "question": "What is Python?",
+      "expected_topics": [
+        "programming language",
+        "interpreted",
+        "high-level",
+        "general-purpose"
+      ],
+      "should_cite_sources": true
+    }
+  ]
+}

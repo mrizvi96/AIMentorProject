@@ -37,8 +37,7 @@ pip3 install gdown
 cd backend
 
 # Download CC-licensed computer science PDFs from Google Drive folder
-# This folder contains 21 verified open-source textbooks (CC BY, CC BY-SA, CC0, Public Domain)
-# Total size: ~243MB
+# This folder contains 14 verified open-source textbooks (CC BY, CC BY-SA, CC0, Public Domain)
 # All materials verified to allow commercial AI training (no NC/ND restrictions)
 gdown --folder "1kRGaPosd1ZcX6u918NZD5V1Q_S8C2anp" -O course_materials/
 
@@ -47,6 +46,18 @@ if [ -d "course_materials/freeCSbooks" ]; then
     mv course_materials/freeCSbooks/* course_materials/
     rmdir course_materials/freeCSbooks
 fi
+
+# Run harvester to download additional 7 PDFs (to reach 21 total, ~243MB)
+# Uses curated sources from scripts/cs_textbooks_catalog.json
+source venv/bin/activate
+pip install -q requests beautifulsoup4 PyPDF2
+python3 scripts/practical_harvester.py --max-items 10 --output-dir course_materials
+
+# Copy harvested PDFs from bulk collection to course_materials
+cp cs_materials_bulk/*.pdf course_materials/ 2>/dev/null
+
+# Verify we have 21 PDFs
+ls -1 course_materials/*.pdf | wc -l  # Should output: 21
 
 cd ..
 ```
@@ -836,6 +847,197 @@ This fix is REQUIRED for the system to work correctly. Without it, you may encou
 
 ---
 
+### ERROR 10: ChromaDB Ingestion Silent Failure - Empty Database
+
+**Symptoms**:
+- Ingestion script runs successfully and reports chunks created (e.g., "9,485 chunks")
+- ChromaDB collection shows 0 documents when queried
+- Evaluation returns "Empty Response" for all queries with 0 sources
+- ChromaDB database file (`chroma_db/chroma.sqlite3`) is abnormally small (~144KB)
+
+**Discovery Process**:
+1. Ran automated evaluation (20 questions) - all returned "Empty Response"
+2. Manually tested RAG service directly - initially worked, then failed
+3. Added debug logging to evaluation script
+4. Discovered ChromaDB collection count was 0 despite ingestion logs
+
+**Investigation**:
+```bash
+# Check ChromaDB document count
+cd /root/AIMentorProject/backend
+source venv/bin/activate
+python3 -c "
+import chromadb
+client = chromadb.PersistentClient(path='./chroma_db')
+collection = client.get_collection(name='course_materials')
+print(f'Total documents: {collection.count()}')
+"
+# Output with bug: Total documents: 0
+# Expected: Total documents: 33757 (for 21 PDFs)
+```
+
+**Root Cause**:
+Unknown - potentially a timing/state issue with first ingestion run. The ingestion process completed without errors but data was not persisted to ChromaDB. This appears to be an intermittent issue that occurred during the initial ingestion after fresh instance setup.
+
+**Fix**:
+Re-run ingestion with --overwrite flag:
+
+```bash
+cd /root/AIMentorProject/backend
+source venv/bin/activate
+python3 ingest.py --directory ./course_materials/ --overwrite
+```
+
+**Expected Output**:
+```
+2025-11-05 04:11:39 - INFO - ✓ Document ingestion complete!
+2025-11-05 04:11:39 - INFO - Successful PDFs: 21/21
+2025-11-05 04:11:39 - INFO - Total chunks: 33757
+2025-11-05 04:11:39 - INFO - Collection: course_materials
+```
+
+**Verification**:
+```bash
+# Verify document count
+python3 -c "
+import chromadb
+client = chromadb.PersistentClient(path='./chroma_db')
+collection = client.get_collection(name='course_materials')
+print(f'Total documents: {collection.count()}')
+"
+# Should output: Total documents: 33757
+
+# Check database file size
+ls -lh chroma_db/chroma.sqlite3
+# Should be ~60-80MB for 21 PDFs, not 144KB
+
+# Test RAG query manually
+python3 -c "
+from app.services.rag_service import RAGService
+import asyncio
+async def test():
+    rag = RAGService()
+    rag.initialize()
+    result = await rag.query('What is Python?')
+    print(f'Response length: {len(result[\"response\"])} chars')
+    print(f'Sources: {len(result[\"sources\"])}')
+asyncio.run(test())
+"
+# Should show response with multiple sources
+```
+
+**Discrepancy Note**:
+- First ingestion reported: 9,485 chunks
+- Second ingestion reported: 33,757 chunks
+- This suggests the first run may have processed fewer PDFs or encountered silent failures
+
+**Prevention Recommendations**:
+1. Always verify ChromaDB document count after ingestion
+2. Check database file size (should be ~3MB per PDF on average)
+3. Run a test query before proceeding to evaluation
+4. Consider adding automatic verification to ingestion script
+
+**Impact**:
+CRITICAL - Without this fix, the entire RAG system is non-functional. All queries return empty responses because there are no documents to retrieve from the vector database.
+
+---
+
+### ERROR 11: Evaluation Returns "Empty Response" - Relative Path Bug
+
+**Symptoms**:
+- Evaluation script runs without errors
+- All 20 questions return "Empty Response" with 0 sources
+- Manual RAG testing works perfectly
+- ChromaDB shows 33,757 documents when queried from backend directory
+- RAG service logs show "ChromaDB collection 'course_materials' has 0 documents"
+
+**Discovery Process**:
+1. Fixed ERROR 10 (ChromaDB ingestion failure) - database now has 33,757 documents
+2. Ran evaluation - still got "Empty Response" for all queries
+3. Tested retrieval directly - worked fine, retrieved 5 nodes with good scores
+4. Tested query engine with LLM - worked fine, generated 812-char response
+5. Added logging to RAG service initialization - showed 0 documents in collection
+6. Discovered evaluation directory has its own empty `chroma_db/` directory
+7. Root cause: Relative path `./chroma_db` resolves differently depending on working directory
+
+**Investigation**:
+```bash
+# From backend directory - WORKS
+cd /root/AIMentorProject/backend
+python3 -c "import chromadb; c = chromadb.PersistentClient(path='./chroma_db'); print(c.get_collection('course_materials').count())"
+# Output: 33757
+
+# From evaluation directory - FAILS (creates new empty database!)
+cd /root/AIMentorProject/backend/evaluation
+python3 -c "import chromadb; c = chromadb.PersistentClient(path='./chroma_db'); print(c.get_collection('course_materials').count())"
+# Output: 0
+
+# Check if empty chroma_db exists in evaluation dir
+ls -la /root/AIMentorProject/backend/evaluation/chroma_db
+# Shows empty database directory created by evaluation script
+```
+
+**Root Cause**:
+The config file used a relative path `./chroma_db` which resolves to different absolute paths depending on the current working directory:
+- From `/root/AIMentorProject/backend`: resolves to `/root/AIMentorProject/backend/chroma_db` ✅ (correct, has data)
+- From `/root/AIMentorProject/backend/evaluation`: resolves to `/root/AIMentorProject/backend/evaluation/chroma_db` ❌ (wrong, empty)
+
+When ChromaDB's `get_or_create_collection()` runs with the evaluation directory path, it creates a NEW empty database and collection.
+
+**Fix**:
+Make ChromaDB path absolute in the config file.
+
+**File: `backend/app/core/config.py`** - Lines 1-8 and 29-32:
+```python
+# Add Path import at top of file
+from pathlib import Path
+
+# ... (in Settings class) ...
+
+# ChromaDB Configuration (file-based, no server needed)
+# Use absolute path to ensure it works from any directory (e.g., evaluation/)
+chroma_db_path: str = str(Path(__file__).parent.parent.parent / "chroma_db")
+chroma_collection_name: str = "course_materials"
+```
+
+**Path Resolution**:
+- `__file__`: `/root/AIMentorProject/backend/app/core/config.py`
+- `.parent`: `/root/AIMentorProject/backend/app/core/`
+- `.parent.parent`: `/root/AIMentorProject/backend/app/`
+- `.parent.parent.parent`: `/root/AIMentorProject/backend/`
+- Final path: `/root/AIMentorProject/backend/chroma_db`
+
+**Verification**:
+```bash
+cd /root/AIMentorProject/backend/evaluation
+source ../venv/bin/activate
+python3 run_evaluation.py --mode direct
+
+# Should now show in logs:
+# ChromaDB collection 'course_materials' has 33757 documents
+
+# Check results file
+python3 -c "import json; data = json.load(open('results/evaluation_TIMESTAMP.json')); print(f'Q1 response length: {len(data[\"responses\"][0][\"response\"])} chars')"
+# Should show >200 chars, not 14 ("Empty Response")
+```
+
+**Cleanup** (optional):
+```bash
+# Remove the accidentally created empty database in evaluation dir
+rm -rf /root/AIMentorProject/backend/evaluation/chroma_db
+```
+
+**Impact**:
+CRITICAL - Without this fix, the evaluation framework is completely non-functional when run from any directory other than the backend root. The RAG service connects to an empty database, causing all queries to return "Empty Response".
+
+**Why This Was Hard to Debug**:
+- All components (LLM, embeddings, ChromaDB, retrieval) worked individually
+- The error only manifested when running from a subdirectory
+- No error messages were thrown - the system silently created a new empty database
+- Logs showed "0 documents" but didn't indicate the path mismatch
+
+---
+
 ## Updated Fresh Instance Setup Summary
 
 When setting up a **completely fresh Runpod instance**, follow these steps in order:
@@ -931,6 +1133,98 @@ python3 test_agentic_rag.py
 ```
 
 **Total Time**: ~10-15 minutes (first run), ~5 minutes (subsequent runs if model/PDFs cached)
+
+---
+
+## 🔄 RAG System Improvements - November 5, 2025
+
+### Context: Evaluation and Improvements
+After initial system deployment, we conducted a comprehensive baseline evaluation and implemented significant improvements to address two critical issues:
+
+1. **High Hallucination Rate** (35% baseline)
+2. **Poor Source Citations** (2.40/5.0 baseline)
+
+### Changes Implemented
+
+#### Configuration Changes (config.py)
+```python
+# Multi-source retrieval and improved context
+top_k_retrieval: int = 3  # ↑ from 1
+chunk_size: int = 512  # ↑ from 256
+chunk_overlap: int = 50  # ↑ from 25
+similarity_threshold: float = 0.4  # ↓ from 0.7
+
+# Response generation improvements
+llm_max_tokens: int = 768  # ↑ from 512
+stop_sequences: []  # removed ["\n\n"]
+```
+
+#### Re-ingestion Required
+After configuration changes, documents were re-ingested with larger chunks:
+```bash
+cd backend
+source venv/bin/activate
+python3 ingest.py --directory ./course_materials/ --overwrite
+# Creates ~33,757 chunks with 512-token chunk size
+```
+
+#### Prompt Engineering (rag_service.py)
+Major prompt rewrite with:
+- Explicit hallucination constraints ("DO NOT add information from general knowledge")
+- Detailed citation format requirements: `[Source: filename, page X]`
+- Pedagogical approach for intro CS students
+- Completeness guidelines (address ALL parts of questions)
+- Technical accuracy instructions (honor distinctions in source material)
+
+### Evaluation Files
+
+#### Baseline Evaluation (Completed & Scored)
+- **File**: `backend/evaluation/results/evaluation_20251105_043049.json`
+- **CSV**: `backend/evaluation/results/evaluation_20251105_043049_scoring_completed.csv`
+- **Metrics**:
+  - Overall Score: 3.96/5.0
+  - Source Citation: 2.40/5.0 🔴
+  - Hallucination Rate: 35% 🔴
+  - Retrieval Success: 100% ✅
+
+#### Improved System Evaluation (Pending Scoring)
+- **File**: `backend/evaluation/results/evaluation_20251105_084005.json`
+- **CSV**: `backend/evaluation/results/evaluation_20251105_084005_scoring.csv`
+- **Status**: Awaiting manual scoring for comparison
+
+### 🚨 CRITICAL: Ask User for Scored Evaluation on New Instance
+
+**When starting a fresh Runpod instance**, immediately ask the user:
+
+> "Do you have the scored evaluation CSV for the improved system (evaluation_20251105_084005_scoring.csv)?
+> Please provide the Google Sheets link or upload the completed CSV so I can:
+> 1. Import the scores
+> 2. Generate comparative analysis (baseline vs improved)
+> 3. Calculate improvement metrics
+> 4. Document final system performance"
+
+**Why this matters**:
+- The improved evaluation was run but not manually scored before instance termination
+- Without these scores, we cannot validate the improvements made
+- All configuration changes (top_k=3, chunk_size=512, etc.) are already implemented
+- Need comparison to determine if system is production-ready
+
+### Documentation Created
+- `backend/evaluation/BASELINE_ANALYSIS.md` - Detailed baseline metrics analysis
+- `backend/evaluation/IMPROVEMENTS_IMPLEMENTED.md` - Comprehensive improvement documentation
+- `backend/evaluation/QUICK_COMPARISON.md` - Side-by-side before/after comparison
+- `backend/evaluation/IMPROVEMENT_PLAN.md` - 3-phase improvement strategy
+
+### Expected Results (To Be Validated)
+- Overall score: 4.2-4.5 (from 3.96)
+- Source citations: 4.2-4.6 (from 2.40) - **+80-90% improvement expected**
+- Hallucination rate: 3-8% (from 35%) - **-27 to -32 pp expected**
+
+### Files Modified
+1. `backend/app/core/config.py` - All configuration parameters
+2. `backend/app/services/mistral_llm.py` - Stop sequence removal
+3. `backend/app/services/rag_service.py` - Comprehensive prompt rewrite
+4. `backend/chroma_db/` - Re-ingested with larger chunks
 
 ---
 

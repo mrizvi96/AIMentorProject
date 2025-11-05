@@ -76,12 +76,20 @@ async def query_rag_direct(question: str, rag_service: RAGService) -> Dict[str, 
     """Query the RAG service directly (bypassing HTTP)"""
     try:
         result = await rag_service.query(question)
+        # Debug logging
+        print(f"  DEBUG - Result keys: {result.keys()}")
+        print(f"  DEBUG - Response type: {type(result['response'])}")
+        print(f"  DEBUG - Response value: {repr(result['response'][:100])}")
+        print(f"  DEBUG - Sources count: {len(result.get('sources', []))}")
         return {
             "answer": result["response"],  # RAG service returns 'response' not 'answer'
             "sources": result.get("sources", []),  # Sources already formatted by RAG service
             "error": None
         }
     except Exception as e:
+        print(f"  DEBUG - Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "error": str(e),
             "answer": None,

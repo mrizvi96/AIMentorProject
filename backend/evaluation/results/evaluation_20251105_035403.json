@@ -1,0 +1,569 @@
+{
+  "metadata": {
+    "timestamp": "20251105_035403",
+    "mode": "direct",
+    "total_questions": 20
+  },
+  "responses": [
+    {
+      "question_id": "Q001",
+      "question": "What is Python?",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "expected_topics": [
+        "programming language",
+        "interpreted",
+        "high-level",
+        "general-purpose"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q002",
+      "question": "Explain the concept of recursion in programming.",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "expected_topics": [
+        "function calls itself",
+        "base case",
+        "recursive case",
+        "stack"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q003",
+      "question": "What is a variable in programming?",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "expected_topics": [
+        "storage location",
+        "named reference",
+        "holds data",
+        "value"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q004",
+      "question": "What is the difference between a list and a tuple in Python?",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "expected_topics": [
+        "mutable",
+        "immutable",
+        "list can change",
+        "tuple cannot change"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q005",
+      "question": "What does the following Python code do: for i in range(5): print(i)",
+      "category": "code_analysis",
+      "difficulty": "medium",
+      "expected_topics": [
+        "loop",
+        "iteration",
+        "prints numbers",
+        "0 to 4"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q006",
+      "question": "Explain how binary search works and why it's more efficient than linear search.",
+      "category": "conceptual_understanding",
+      "difficulty": "hard",
+      "expected_topics": [
+        "divide and conquer",
+        "sorted array",
+        "O(log n)",
+        "comparison"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q007",
+      "question": "What is an algorithm?",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "expected_topics": [
+        "step-by-step procedure",
+        "problem solving",
+        "instructions",
+        "computation"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q008",
+      "question": "What is object-oriented programming?",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "expected_topics": [
+        "objects",
+        "classes",
+        "encapsulation",
+        "inheritance",
+        "polymorphism"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q009",
+      "question": "How would you find the largest number in a list of integers?",
+      "category": "problem_solving",
+      "difficulty": "medium",
+      "expected_topics": [
+        "iterate",
+        "compare",
+        "maximum",
+        "loop"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q010",
+      "question": "What is a function in programming?",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "expected_topics": [
+        "reusable code",
+        "block of code",
+        "performs task",
+        "parameters"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q011",
+      "question": "Compare and contrast arrays and linked lists. When would you use each?",
+      "category": "comparative_analysis",
+      "difficulty": "hard",
+      "expected_topics": [
+        "contiguous memory",
+        "dynamic size",
+        "access time",
+        "insertion"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q012",
+      "question": "What is Big O notation and why is it important?",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "expected_topics": [
+        "time complexity",
+        "performance",
+        "algorithm efficiency",
+        "scaling"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q013",
+      "question": "What is the purpose of comments in code?",
+      "category": "code_analysis",
+      "difficulty": "easy",
+      "expected_topics": [
+        "documentation",
+        "explain",
+        "readability",
+        "maintenance"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q014",
+      "question": "Explain how memory management works in Python, including garbage collection.",
+      "category": "conceptual_understanding",
+      "difficulty": "hard",
+      "expected_topics": [
+        "automatic",
+        "reference counting",
+        "garbage collector",
+        "memory allocation"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q015",
+      "question": "How would you reverse a string in Python?",
+      "category": "problem_solving",
+      "difficulty": "medium",
+      "expected_topics": [
+        "slicing",
+        "reverse",
+        "string manipulation",
+        "[::-1]"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q016",
+      "question": "What is a data structure?",
+      "category": "factual_recall",
+      "difficulty": "easy",
+      "expected_topics": [
+        "organize data",
+        "storage format",
+        "collection",
+        "efficient access"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q017",
+      "question": "What is the difference between a stack and a queue?",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "expected_topics": [
+        "LIFO",
+        "FIFO",
+        "last in first out",
+        "first in first out"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q018",
+      "question": "Compare interpreted languages like Python with compiled languages like C++.",
+      "category": "comparative_analysis",
+      "difficulty": "hard",
+      "expected_topics": [
+        "execution",
+        "compilation",
+        "performance",
+        "portability"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q019",
+      "question": "What is a loop and why are loops useful in programming?",
+      "category": "conceptual_understanding",
+      "difficulty": "medium",
+      "expected_topics": [
+        "repetition",
+        "iteration",
+        "automation",
+        "efficiency"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    },
+    {
+      "question_id": "Q020",
+      "question": "Design an algorithm to check if a string is a palindrome.",
+      "category": "problem_solving",
+      "difficulty": "hard",
+      "expected_topics": [
+        "reverse comparison",
+        "two pointers",
+        "algorithm design"
+      ],
+      "response": "Empty Response",
+      "sources": [],
+      "error": null,
+      "scores": {
+        "answer_relevance": null,
+        "faithfulness": null,
+        "clarity": null,
+        "conciseness": null,
+        "source_citation": null,
+        "overall": null
+      },
+      "binary_checks": {
+        "hallucination_detected": null,
+        "retrieval_success": null
+      },
+      "notes": ""
+    }
+  ]
+}
