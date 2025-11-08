@@ -31,36 +31,38 @@ wget "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main
 cd ../..
 ```
 
-### Step 3: Download Course Materials (~1 minute)
+### Step 3: Download Course Materials (~3-5 minutes)
 ```bash
-pip3 install gdown
 cd backend
 
-# Download CC-licensed computer science PDFs from Google Drive folder
-# This folder contains 14 verified open-source textbooks (CC BY, CC BY-SA, CC0, Public Domain)
+# Download CC-licensed computer science PDFs as ZIP from Google Drive
+# This ZIP contains 60 verified open-source textbooks (CC BY, CC BY-SA, CC0, Public Domain)
 # All materials verified to allow commercial AI training (no NC/ND restrictions)
-gdown --folder "1kRGaPosd1ZcX6u918NZD5V1Q_S8C2anp" -O course_materials/
+# Google Drive File ID: 1BNWbDrno2ZNJUrJd_Vbeof4YI2diMTxe (Books_zipped.zip, 382MB)
 
-# Move files from nested directory if needed
-if [ -d "course_materials/freeCSbooks" ]; then
-    mv course_materials/freeCSbooks/* course_materials/
-    rmdir course_materials/freeCSbooks
-fi
+# Step 1: Initial download (gets virus scan warning page)
+wget --no-check-certificate "https://drive.google.com/uc?export=download&id=1BNWbDrno2ZNJUrJd_Vbeof4YI2diMTxe" -O course_materials.zip
 
-# Run harvester to download additional 7 PDFs (to reach 21 total, ~243MB)
-# Uses curated sources from scripts/cs_textbooks_catalog.json
-source venv/bin/activate
-pip install -q requests beautifulsoup4 PyPDF2
-python3 scripts/practical_harvester.py --max-items 10 --output-dir course_materials
+# Step 2: Extract confirmation token from the HTML page
+UUID=$(grep -oP 'uuid" value="\K[^"]+' course_materials.zip | head -1)
 
-# Copy harvested PDFs from bulk collection to course_materials
-cp cs_materials_bulk/*.pdf course_materials/ 2>/dev/null
+# Step 3: Download with virus scan confirmation (actual file download)
+wget --no-check-certificate "https://drive.usercontent.google.com/download?id=1BNWbDrno2ZNJUrJd_Vbeof4YI2diMTxe&export=download&confirm=t&uuid=$UUID" -O course_materials.zip
 
-# Verify we have 21 PDFs
-ls -1 course_materials/*.pdf | wc -l  # Should output: 21
+# Step 4: Extract ZIP file
+unzip -q course_materials.zip
+
+# Step 5: Move PDFs to course_materials directory
+mv *.pdf course_materials/
+rm -rf app cs_materials_bulk evaluation scripts tests course_materials.zip
+
+# Verify we have 60 PDFs
+ls -1 course_materials/*.pdf | wc -l  # Should output: 60
 
 cd ..
 ```
+
+**Note**: If Google Drive download fails due to quota/rate limits, use gdown with folder download (requires increasing MAX_NUMBER_FILES limit - see ERROR 12).
 
 ### Step 4: Setup Python Environment (~3-5 minutes)
 ```bash
@@ -1056,15 +1058,15 @@ mkdir -p backend/models
 cd backend/models
 wget "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q5_K_M.gguf"
 
-# Download course PDFs (~1 minute)
-# CC-licensed computer science books (14 PDFs, ~180MB total)
+# Download course PDFs as ZIP (~3-5 minutes)
+# CC-licensed computer science books (60 PDFs, 382MB ZIP)
 cd ..
-pip3 install gdown
-gdown --folder "1kRGaPosd1ZcX6u918NZD5V1Q_S8C2anp" -O course_materials/
-if [ -d "course_materials/freeCSbooks" ]; then
-    mv course_materials/freeCSbooks/* course_materials/
-    rmdir course_materials/freeCSbooks
-fi
+wget --no-check-certificate "https://drive.google.com/uc?export=download&id=1BNWbDrno2ZNJUrJd_Vbeof4YI2diMTxe" -O course_materials.zip
+UUID=$(grep -oP 'uuid" value="\K[^"]+' course_materials.zip | head -1)
+wget --no-check-certificate "https://drive.usercontent.google.com/download?id=1BNWbDrno2ZNJUrJd_Vbeof4YI2diMTxe&export=download&confirm=t&uuid=$UUID" -O course_materials.zip
+unzip -q course_materials.zip
+mv *.pdf course_materials/
+rm -rf app cs_materials_bulk evaluation scripts tests course_materials.zip
 cd ..
 ```
 
@@ -1225,6 +1227,93 @@ Major prompt rewrite with:
 2. `backend/app/services/mistral_llm.py` - Stop sequence removal
 3. `backend/app/services/rag_service.py` - Comprehensive prompt rewrite
 4. `backend/chroma_db/` - Re-ingested with larger chunks
+
+---
+
+### ERROR 12: gdown Folder Download Limit (50 Files Maximum)
+
+**Full Error**:
+```
+The gdrive folder with url: https://drive.google.com/drive/folders/1MNxJGlllnyRVunWYi_H2hKSsh1W_KIpP
+has more than 50 files, gdrive can't download more than this limit.
+
+You can use `--remaining-ok` option to ignore this error.
+```
+
+**Symptoms**:
+- gdown fails when trying to download Google Drive folder with more than 50 files
+- Error occurs during course materials download in Step 3
+- `--remaining-ok` flag downloads only first 50 files and ignores the rest (not a complete solution)
+
+**Root Cause**:
+gdown has a hardcoded `MAX_NUMBER_FILES = 50` limit in `download_folder.py` to prevent accidental large downloads. The new course materials folder has 50+ PDF files.
+
+**Fix**:
+Edit the gdown package file to increase the limit:
+
+**1. Find the gdown installation:**
+```bash
+find /usr -name "download_folder.py" 2>/dev/null | grep gdown
+# Output: /usr/local/lib/python3.12/dist-packages/gdown/download_folder.py
+```
+
+**2. Edit the file and change MAX_NUMBER_FILES:**
+```bash
+# Open the file and find line 19
+nano /usr/local/lib/python3.12/dist-packages/gdown/download_folder.py
+
+# Change from:
+MAX_NUMBER_FILES = 50
+
+# Change to:
+MAX_NUMBER_FILES = 200
+```
+
+Or use sed to modify it programmatically:
+```bash
+sed -i 's/MAX_NUMBER_FILES = 50/MAX_NUMBER_FILES = 200/' /usr/local/lib/python3.12/dist-packages/gdown/download_folder.py
+```
+
+**3. Verify the change:**
+```bash
+grep "MAX_NUMBER_FILES" /usr/local/lib/python3.12/dist-packages/gdown/download_folder.py
+# Should output: MAX_NUMBER_FILES = 200
+```
+
+**4. Re-run download command:**
+```bash
+cd /root/AIMentorProject/backend
+gdown --folder "1MNxJGlllnyRVunWYi_H2hKSsh1W_KIpP" -O course_materials/
+```
+
+**Why This Works**:
+- Increases the maximum file limit from 50 to 200
+- Allows downloading complete course materials folder
+- No need for `--remaining-ok` flag which only downloads partial files
+- Permanent fix for current session (persists until gdown is reinstalled)
+
+**Alternative Solution (If gdown is in virtual environment)**:
+```bash
+# Find venv gdown installation
+find backend/venv -name "download_folder.py" 2>/dev/null
+
+# Edit the file in venv
+nano backend/venv/lib/python3.*/site-packages/gdown/download_folder.py
+# Change MAX_NUMBER_FILES = 50 to MAX_NUMBER_FILES = 200
+```
+
+**Important Notes**:
+- This fix needs to be reapplied if you reinstall gdown
+- The system-wide gdown was modified in this case (not venv)
+- Set MAX_NUMBER_FILES to a value higher than your folder's file count
+- For very large folders (>200 files), increase the limit further
+
+**Verification**:
+```bash
+# Check how many PDFs were downloaded
+ls -1 backend/course_materials/freeCSbooks*/*.pdf | wc -l
+# Should match the number of files in Google Drive folder
+```
 
 ---
 
