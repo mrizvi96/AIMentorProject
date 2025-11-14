@@ -1,0 +1,62 @@
+[
+  {
+    "question": "I'm trying to understand what a variable is in programming. I keep getting confused about why we need them.",
+    "topic": "programming_basics",
+    "expected_concepts": ["variables", "memory storage", "data assignment"]
+  },
+  {
+    "question": "I need to write a function that finds the largest number in a list, but I don't know where to start. Can you help me think through this?",
+    "topic": "algorithms",
+    "expected_concepts": ["functions", "lists", "maximum", "iteration"]
+  },
+  {
+    "question": "My Python code has an error: 'list index out of range'. I don't understand what this means or how to fix it.",
+    "topic": "debugging",
+    "expected_concepts": ["indexing", "bounds checking", "error handling"]
+  },
+  {
+    "question": "What's the difference between a for loop and a while loop? I can make both work, but I'm not sure when to use which one.",
+    "topic": "control_flow",
+    "expected_concepts": ["for loops", "while loops", "iteration patterns"]
+  },
+  {
+    "question": "I wrote this code to calculate the average of numbers in a list. Can you look at it and tell me if it's good?",
+    "topic": "code_review",
+    "expected_concepts": ["averages", "list processing", "code quality"]
+  },
+  {
+    "question": "I keep forgetting the syntax for Python conditionals. How can I get better at remembering this stuff?",
+    "topic": "learning_strategies",
+    "expected_concepts": ["conditionals", "syntax", "memory techniques"]
+  },
+  {
+    "question": "Why do I need to learn about data structures like arrays and lists? Can't I just use variables for everything?",
+    "topic": "data_structures",
+    "expected_concepts": ["data structures", "arrays", "lists", "organization"]
+  },
+  {
+    "question": "Can you explain what a function is using an analogy I can understand? I'm having trouble with the technical explanations.",
+    "topic": "functions",
+    "expected_concepts": ["functions", "analogies", "abstraction"]
+  },
+  {
+    "question": "I understand how to use if/else statements, but I'm confused about how to combine multiple conditions. How should I approach learning this?",
+    "topic": "conditionals",
+    "expected_concepts": ["logical operators", "nested conditions", "compound statements"]
+  },
+  {
+    "question": "I think I understand loops, but when I try to nest one inside another, my brain gets confused. Am I missing something fundamental?",
+    "topic": "nested_loops",
+    "expected_concepts": ["nested loops", "iteration", "complexity"]
+  },
+  {
+    "question": "I want to write a simple program that asks for the user's name and age, then prints a greeting. Where should I start?",
+    "topic": "input_output",
+    "expected_concepts": ["user input", "string formatting", "basic program structure"]
+  },
+  {
+    "question": "I tried to fix my code for hours and finally got it working, but I'm not sure WHY my fix worked. How can I learn from this?",
+    "topic": "debugging_process",
+    "expected_concepts": ["debugging", "learning process", "problem solving"]
+  }
+]
