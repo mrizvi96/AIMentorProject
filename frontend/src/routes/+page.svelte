@@ -7,9 +7,11 @@
 	import { sendMessageHTTP } from '$lib/api';
 	import { checkAuth } from '$lib/auth';
 
-	// Check authentication status on mount
-	onMount(async () => {
-		await checkAuth();
+	// Check authentication status on mount (non-blocking)
+	onMount(() => {
+		checkAuth().catch(err => {
+			console.warn('Auth check failed:', err);
+		});
 	});
 
 	async function handleSend(message: string) {

@@ -24,12 +24,12 @@
 	<div class="input-wrapper">
 		<textarea
 			bind:value={inputValue}
-			on:keypress={handleKeyPress}
+			onkeypress={handleKeyPress}
 			placeholder="Ask a computer science question..."
 			disabled={$isLoading}
 			rows="1"
 		></textarea>
-		<button on:click={handleSubmit} disabled={$isLoading || !inputValue.trim()} class="send-btn">
+		<button onclick={handleSubmit} disabled={$isLoading || !inputValue.trim()} class="send-btn">
 			{#if $isLoading}
 				<span class="loading-spinner"></span>
 			{:else}
