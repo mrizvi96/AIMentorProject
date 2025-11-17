@@ -26,23 +26,10 @@
 			<div class="welcome-content">
 				<h2>AI Mentor</h2>
 				<p>AI Introductory CS Mentor</p>
-				<div class="features">
-					<div class="feature">
-						<span class="feature-icon">🔍</span>
-						<span>Retrieval-augmented answers from course materials</span>
-					</div>
-					<div class="feature">
-						<span class="feature-icon">🧠</span>
-						<span>Self-correcting agentic workflow</span>
-					</div>
-					<div class="feature">
-						<span class="feature-icon">📚</span>
-						<span>Source citations for every answer</span>
-					</div>
-					<div class="feature">
-						<span class="feature-icon">⚡</span>
-						<span>Real-time streaming responses</span>
-					</div>
+				<div class="project-info">
+					<p class="project-title">CS 6460: Educational Technology Project</p>
+					<p class="author">Built by Mohammad M. Rizvi</p>
+					<p class="license">Creative Commons License</p>
 				</div>
 				<p class="prompt">Ask me anything about computer science!</p>
 			</div>
@@ -93,32 +80,39 @@
 		opacity: 0.8;
 	}
 
-	.features {
-		display: grid;
-		gap: 1rem;
+	.project-info {
 		margin: 2rem 0;
-		text-align: left;
-	}
-
-	.feature {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 1rem;
+		padding: 1.5rem;
 		background: rgba(0, 255, 0, 0.05);
 		border-radius: 8px;
-		border-left: 3px solid #00ff00;
 		border: 1px solid #00ff00;
+		border-left: 3px solid #00ff00;
+		box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
 	}
 
-	.feature-icon {
-		font-size: 1.5rem;
-	}
-
-	.feature span:last-child {
+	.project-title {
 		color: #00ff00;
-		font-size: 0.95rem;
+		font-size: 1.1rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
 		font-family: 'Courier New', monospace;
+		text-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+	}
+
+	.author {
+		color: #00ff00;
+		font-size: 1rem;
+		margin-bottom: 0.5rem;
+		font-family: 'Courier New', monospace;
+		opacity: 0.9;
+	}
+
+	.license {
+		color: #00ff00;
+		font-size: 0.9rem;
+		font-family: 'Courier New', monospace;
+		opacity: 0.8;
+		font-style: italic;
 	}
 
 	.prompt {

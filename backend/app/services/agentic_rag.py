@@ -128,17 +128,20 @@ class AgenticRAGService:
             # Query the vector store
             response = self.query_engine.query(question)
 
-            # Extract documents and scores
+            # Extract documents, scores, and metadata
             documents = []
             scores = []
+            metadata_list = []
 
             if hasattr(response, 'source_nodes'):
                 for node in response.source_nodes:
                     documents.append(node.node.text)
                     scores.append(float(node.score) if node.score else 0.0)
+                    metadata_list.append(node.node.metadata)
 
             state["documents"] = documents
             state["document_scores"] = scores
+            state["document_metadata"] = metadata_list
 
             logger.info(f"  Retrieved {len(documents)} documents (avg score: {sum(scores)/len(scores):.2f})")
 
@@ -146,6 +149,7 @@ class AgenticRAGService:
             logger.error(f"  Retrieval failed: {e}")
             state["documents"] = []
             state["document_scores"] = []
+            state["document_metadata"] = []
 
         return state
 
@@ -332,6 +336,7 @@ Answer:"""
             "rewritten_question": None,
             "documents": [],
             "document_scores": [],
+            "document_metadata": [],
             "generation": "",
             "messages": [],
             "retry_count": 0,
@@ -351,9 +356,9 @@ Answer:"""
                     {
                         "text": doc[:200] + "..." if len(doc) > 200 else doc,
                         "score": score,
-                        "metadata": {}
+                        "metadata": metadata
                     }
-                    for doc, score in zip(final_state["documents"], final_state["document_scores"])
+                    for doc, score, metadata in zip(final_state["documents"], final_state["document_scores"], final_state.get("document_metadata", [{}] * len(final_state["documents"])))
                 ],
                 "question": question,
                 "num_sources": len(final_state["documents"]),
@@ -403,6 +408,7 @@ Answer:"""
             "rewritten_question": None,
             "documents": [],
             "document_scores": [],
+            "document_metadata": [],
             "generation": "",
             "messages": [],
             "retry_count": 0,
@@ -483,9 +489,9 @@ Answer:"""
                         {
                             "text": doc[:200] + "..." if len(doc) > 200 else doc,
                             "score": score,
-                            "metadata": {}
+                            "metadata": metadata
                         }
-                        for doc, score in zip(final_state["documents"], final_state["document_scores"])
+                        for doc, score, metadata in zip(final_state["documents"], final_state["document_scores"], final_state.get("document_metadata", [{}] * len(final_state["documents"])))
                     ],
                     "question": question,
                     "num_sources": len(final_state["documents"]),

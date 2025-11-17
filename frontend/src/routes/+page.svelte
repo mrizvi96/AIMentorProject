@@ -32,8 +32,8 @@
 	<header>
 		<div class="header-content">
 			<div>
-				<h1>AI Tutor</h1>
-				<p>Intelligent CS tutor powered by RAG</p>
+				<h1>AI Mentor</h1>
+				<p>CS 6460: Educational Technology Project</p>
 			</div>
 			<div class="header-right">
 				<div class="status-indicator">
