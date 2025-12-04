@@ -21,6 +21,10 @@ export interface Message {
 	timestamp: Date;
 	sources?: string[] | SourceDocument[]; // Support both formats
 	workflow?: WorkflowStep[];
+	// Pedagogical metadata
+	pedagogicalPhase?: string;
+	phaseSummary?: string;
+	problemStatement?: string;
 }
 
 export interface WorkflowStep {
@@ -45,3 +49,8 @@ export interface User {
 
 export const currentUser = writable<User | null>(null);
 export const isAuthenticated = writable(false);
+
+// Pedagogical mode stores
+export const isPedagogicalMode = writable(false);
+export const currentPhase = writable<string>('initial');
+export const phaseSummary = writable<string>('Understanding your problem');

@@ -1317,4 +1317,52 @@ ls -1 backend/course_materials/freeCSbooks*/*.pdf | wc -l
 
 ---
 
+## Issue: Slow PDF Ingestion (CPU instead of GPU)
+
+**Date**: 2025-12-04
+**Problem**: PDF ingestion was extremely slow (estimated 3-4 hours) with high CPU usage but 0% GPU utilization.
+
+**Root Cause**: The `HF_HUB_ENABLE_HF_TRANSFER=1` environment variable was set to 1 but the `hf_transfer` package was not installed. This caused sentence-transformers to fail when downloading models and fall back to CPU-only mode.
+
+**Symptoms**:
+- GPU utilization at 0% (despite LLM server using 6GB VRAM)
+- nvidia-smi showed very low power draw (~65W)
+- PDF processing taking ~30-40 seconds per chunk
+
+**Fix Applied**:
+```bash
+# Install missing package
+unset HF_HUB_ENABLE_HF_TRANSFER
+source venv/bin/activate
+pip install hf_transfer -q
+
+# Restart ingestion
+python3 ingest.py --directory . --overwrite
+```
+
+**Result**:
+- GPU utilization increased to 9-12%
+- Power draw increased to 70-75W
+- Processing speed improved dramatically (estimated 8-10 minutes total vs 3-4 hours)
+- Embeddings properly using GPU (95MB VRAM allocated)
+
+**Verification**:
+```bash
+# Test GPU usage
+nvidia-smi --query-gpu=utilization.gpu,power.draw --format=csv,noheader,nounits
+# Should show non-zero utilization
+
+# Check embeddings GPU allocation
+source venv/bin/activate && python3 -c "
+import torch
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+embed_model = HuggingFaceEmbedding(device='cuda')
+print(f'GPU memory: {torch.cuda.memory_allocated(0)/1024**2:.2f} MB')
+"
+```
+
+**Note**: This issue only affects the ingestion process. The LLM server was already using GPU properly.
+
+---
+
 **End of Log**

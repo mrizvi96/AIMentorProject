@@ -3,8 +3,10 @@
 	import ChatInput from '$lib/components/ChatInput.svelte';
 	import MessageList from '$lib/components/MessageList.svelte';
 	import AuthButton from '$lib/components/AuthButton.svelte';
-	import { error } from '$lib/stores';
-	import { sendMessageHTTP } from '$lib/api';
+	import PedagogicalStatus from '$lib/components/PedagogicalStatus.svelte';
+	import ModeToggle from '$lib/components/ModeToggle.svelte';
+	import { error, isPedagogicalMode } from '$lib/stores';
+	import { sendMessageHTTP, sendMessagePedagogicalHTTP } from '$lib/api';
 	import { checkAuth } from '$lib/auth';
 
 	// Check authentication status on mount (non-blocking)
@@ -16,7 +18,11 @@
 
 	async function handleSend(message: string) {
 		try {
-			await sendMessageHTTP(message);
+			if ($isPedagogicalMode) {
+				await sendMessagePedagogicalHTTP(message);
+			} else {
+				await sendMessageHTTP(message);
+			}
 		} catch (err) {
 			console.error('Failed to send message:', err);
 			error.set('Failed to connect. Make sure the backend is running.');
@@ -36,6 +42,7 @@
 				<p>CS 6460: Educational Technology Project</p>
 			</div>
 			<div class="header-right">
+				<ModeToggle />
 				<div class="status-indicator">
 					<span class="status-dot"></span>
 					<span>Live</span>
@@ -52,6 +59,9 @@
 	{/if}
 
 	<main>
+		{#if $isPedagogicalMode}
+			<PedagogicalStatus />
+		{/if}
 		<MessageList />
 		<ChatInput onSend={handleSend} />
 	</main>

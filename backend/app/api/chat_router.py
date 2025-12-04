@@ -1,9 +1,10 @@
 """
 Chat API Endpoints
 
-Provides two RAG (Retrieval-Augmented Generation) endpoints:
+Provides three types of chat endpoints:
 1. Simple RAG - Direct retrieval and generation
 2. Agentic RAG - Self-correcting with query rewriting and relevance grading
+3. Pedagogical RAG - Phase-based tutoring with Socratic guidance
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -12,6 +13,9 @@ import logging
 
 from app.services.rag_service import rag_service
 from app.services.agentic_rag import get_agentic_rag_service
+from app.services.state_manager import state_manager
+from app.services.pedagogical_graph import pedagogical_graph
+from app.models.pedagogical_state import TutoringPhase
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +165,34 @@ class AgenticChatResponse(ChatResponse):
     rewrites_used: int
     was_rewritten: bool
 
+class PedagogicalChatResponse(BaseModel):
+    """
+    Pedagogical chat response with phase information
+
+    Contains the AI-generated response along with tutoring phase context.
+    """
+    answer: str = Field(description="The AI-generated response with Socratic guidance")
+    current_phase: str = Field(description="Current tutoring phase the conversation is in")
+    phase_summary: str = Field(description="Human-readable description of the current phase")
+    phase_history: List[str] = Field(description="History of phases visited in this conversation")
+    problem_statement: Optional[str] = Field(description="The problem being worked on, if established")
+    question: str = Field(description="The original user message")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "answer": "Let's break this down step by step. First, can you tell me what you've tried so far?",
+                    "current_phase": "explanation",
+                    "phase_summary": "Breaking down the problem",
+                    "phase_history": ["initial", "explanation"],
+                    "problem_statement": "How to implement binary search tree",
+                    "question": "I need help implementing a BST"
+                }
+            ]
+        }
+    }
+
 @router.post("/chat-agentic", response_model=AgenticChatResponse)
 async def chat_agentic(request: ChatRequest):
     """
@@ -227,4 +259,182 @@ async def compare_rag_types(question: str):
         }
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat/pedagogical", response_model=PedagogicalChatResponse)
+async def chat_pedagogical(request: ChatRequest):
+    """
+    Process a question using Pedagogical RAG (Phase-based tutoring)
+
+    This endpoint uses a phase-based state machine to provide Socratic tutoring:
+    - INITIAL: Understand the problem
+    - EXPLANATION: Break down the problem
+    - IMPLEMENTATION: Work on solution steps
+    - DEBUGGING: Fix issues systematically
+    - REFLECTION: Review and learn
+
+    **Use this endpoint when:**
+    - You want guided learning instead of direct answers
+    - You're working through a complex problem step by step
+    - You need help with debugging or understanding concepts
+    - You want to develop problem-solving skills
+
+    **Response includes:**
+    - Socratic guidance instead of direct answers
+    - Current tutoring phase
+    - Phase history
+    - Problem statement (if established)
+
+    **Example Request:**
+    ```json
+    {
+        "message": "I'm stuck implementing a binary search tree",
+        "conversation_id": "session-123"
+    }
+    ```
+
+    **Example Response:**
+    ```json
+    {
+        "answer": "Let's think through this step by step. Can you tell me what you've tried so far?",
+        "current_phase": "debugging",
+        "phase_summary": "Fixing issues",
+        "phase_history": ["initial", "explanation", "implementation", "debugging"],
+        "problem_statement": "Implementing binary search tree",
+        "question": "I'm stuck implementing a BST"
+    }
+    ```
+    """
+    try:
+        logger.info(f"Pedagogical chat request from conversation {request.conversation_id}")
+
+        # Get or create state for this conversation
+        pedagogical_state = state_manager.get_or_create_state(request.conversation_id)
+
+        # Create a simple mapping of phase to node function
+        from ..services.pedagogical_graph import (
+            initial_node, explanation_node, implementation_node,
+            debugging_node, reflection_node, PedagogicalGraphState, route_phase
+        )
+
+        # Prepare state for graph
+        graph_state = {
+            "pedagogical_state": pedagogical_state,
+            "user_message": request.message,
+            "generation": ""
+        }
+
+        # Use route_phase to determine which node to execute based on user message
+        # This ensures we route to the correct phase for new messages
+        target_phase = route_phase(graph_state)
+
+        phase_node_map = {
+            "INITIAL": initial_node,
+            "EXPLANATION": explanation_node,
+            "IMPLEMENTATION": implementation_node,
+            "DEBUGGING": debugging_node,
+            "REFLECTION": reflection_node
+        }
+
+        # Execute the appropriate node based on routing decision
+        node_function = phase_node_map.get(target_phase, initial_node)
+        result = node_function(graph_state)
+
+        # Validate response completeness
+        response_text = result["generation"]
+
+        # Check if response is too short or incomplete
+        if len(response_text.strip()) < 20:
+            logger.warning(f"Short pedagogical response detected: {response_text[:100]}")
+            # For debugging: log the routing info
+            logger.info(f"Routed to phase: {target_phase}, User message: {request.message[:100]}")
+
+        # Common incomplete responses to detect and potentially retry
+        incomplete_patterns = [
+            "Remember, the goal is",
+            "Good luck",
+            "Your task is",
+            "Question 1:",
+            "Answer:",
+            "Response:"
+        ]
+
+        if any(pattern in response_text for pattern in incomplete_patterns):
+            logger.warning(f"Likely incomplete response pattern detected: {response_text[:100]}")
+
+        # Update state with results
+        updated_state = result["pedagogical_state"]
+        state_manager.update_state(
+            request.conversation_id,
+            current_phase=updated_state.current_phase,
+            problem_statement=updated_state.problem_statement,
+            last_user_message=updated_state.last_user_message,
+            last_ai_response=updated_state.last_ai_response,
+            phase_history=updated_state.phase_history
+        )
+
+        # Return pedagogical response
+        return PedagogicalChatResponse(
+            answer=result["generation"],
+            current_phase=updated_state.current_phase.value,
+            phase_summary=updated_state.get_phase_summary(),
+            phase_history=updated_state.phase_history,
+            problem_statement=updated_state.problem_statement,
+            question=request.message
+        )
+
+    except Exception as e:
+        logger.error(f"Pedagogical chat endpoint error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process pedagogical request: {str(e)}"
+        )
+
+
+@router.get("/chat/pedagogical/state/{conversation_id}")
+async def get_pedagogical_state(conversation_id: str):
+    """
+    Get the current pedagogical state for a conversation
+    Useful for debugging or UI state management
+    """
+    try:
+        state = state_manager.get_state(conversation_id)
+        if not state:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        return {
+            "conversation_id": state.conversation_id,
+            "current_phase": state.current_phase.value,
+            "phase_summary": state.get_phase_summary(),
+            "phase_history": state.phase_history,
+            "problem_statement": state.problem_statement,
+            "last_user_message": state.last_user_message,
+            "last_ai_response": state.last_ai_response
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get pedagogical state error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/chat/pedagogical/state/{conversation_id}")
+async def clear_pedagogical_state(conversation_id: str):
+    """
+    Clear the pedagogical state for a conversation
+    Useful for starting fresh on a new problem
+    """
+    try:
+        success = state_manager.delete_state(conversation_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        return {"message": "Pedagogical state cleared successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Clear pedagogical state error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

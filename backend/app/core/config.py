@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "http://localhost:8080/v1"
     llm_model_name: str = "mistral-7b-instruct-v0.2.q5_k_m.gguf"
     llm_temperature: float = 0.7
-    llm_max_tokens: int = 768  # IMPROVEMENT: Increased from 512 for fuller citations
+    llm_max_tokens: int = 1536  # IMPROVEMENT: Increased from 768 to fix incomplete responses in pedagogical mode
 
     # Embedding Configuration
     embedding_model_name: str = "all-MiniLM-L6-v2"  # Fast, lightweight embedding model
