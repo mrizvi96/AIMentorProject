@@ -190,5 +190,6 @@ docs/.doctrees/
 # course_materials/
 # *.pdf
 course_materials/
+*.zip
 backend/chroma_db/
 backend/embedding_cache/
