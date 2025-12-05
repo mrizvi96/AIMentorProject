@@ -34,7 +34,13 @@
     error = '';
 
     try {
-      const response = await fetch('/api/analytics/feedback', {
+      // Use correct API base URL for both local and production environments
+      const isRunpodProxy = typeof window !== 'undefined' && window.location.hostname.includes('proxy.runpod.net');
+      const API_BASE = isRunpodProxy
+        ? window.location.origin.replace('-5173.', '-8000.').replace('-5174.', '-8000.')
+        : 'http://localhost:8000';
+
+      const response = await fetch(`${API_BASE}/api/analytics/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

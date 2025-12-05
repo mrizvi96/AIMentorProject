@@ -6,10 +6,11 @@ Provides three types of chat endpoints:
 2. Agentic RAG - Self-correcting with query rewriting and relevance grading
 3. Pedagogical RAG - Phase-based tutoring with Socratic guidance
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
+import uuid
 
 from app.services.rag_service import rag_service
 from app.services.agentic_rag import get_agentic_rag_service
@@ -85,6 +86,7 @@ class ChatResponse(BaseModel):
     answer: str = Field(description="The AI-generated answer to the user's question")
     sources: List[Source] = Field(description="List of source documents used to generate the answer")
     question: str = Field(description="The original question (or rewritten version if query was rewritten)")
+    interaction_id: str = Field(description="Unique identifier for tracking feedback and analytics")
 
     model_config = {
         "json_schema_extra": {
@@ -106,7 +108,7 @@ class ChatResponse(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse)
 @log_interaction(EndpointType.SIMPLE)
-async def chat(request: ChatRequest):
+async def chat(http_request: Request, request: ChatRequest):
     """
     Process a question using Simple RAG (Direct Retrieval)
 
@@ -152,8 +154,16 @@ async def chat(request: ChatRequest):
         # Get RAG service
         result = await rag_service.query(request.message)
 
-        # Return structured response
-        return ChatResponse(answer=result['response'], sources=result['sources'], question=result['question'])
+        # Get interaction ID from analytics middleware
+        interaction_id = getattr(http_request.state, 'interaction_id', str(uuid.uuid4()))
+
+        # Return structured response with interaction ID
+        return ChatResponse(
+            answer=result['response'],
+            sources=result['sources'],
+            question=result['question'],
+            interaction_id=interaction_id
+        )
 
     except Exception as e:
         logger.error(f"Chat endpoint error: {e}")
@@ -180,6 +190,7 @@ class PedagogicalChatResponse(BaseModel):
     phase_history: List[str] = Field(description="History of phases visited in this conversation")
     problem_statement: Optional[str] = Field(description="The problem being worked on, if established")
     question: str = Field(description="The original user message")
+    interaction_id: str = Field(description="Unique identifier for tracking feedback and analytics")
 
     model_config = {
         "json_schema_extra": {
@@ -198,7 +209,7 @@ class PedagogicalChatResponse(BaseModel):
 
 @router.post("/chat-agentic", response_model=AgenticChatResponse)
 @log_interaction(EndpointType.AGENTIC)
-async def chat_agentic(request: ChatRequest):
+async def chat_agentic(http_request: Request, request: ChatRequest):
     """
     Handle chat requests using Agentic RAG (self-correcting)
 
@@ -216,6 +227,9 @@ async def chat_agentic(request: ChatRequest):
         # Query with self-correction
         result = rag_service.query(request.message, max_retries=2)
 
+        # Get interaction ID from analytics middleware
+        interaction_id = getattr(http_request.state, 'interaction_id', str(uuid.uuid4()))
+
         # Return extended response with metadata
         return AgenticChatResponse(
             answer=result["answer"],
@@ -223,7 +237,8 @@ async def chat_agentic(request: ChatRequest):
             question=result["question"],
             workflow_path=result["workflow_path"],
             rewrites_used=result["rewrites_used"],
-            was_rewritten=result["was_rewritten"]
+            was_rewritten=result["was_rewritten"],
+            interaction_id=interaction_id
         )
 
     except Exception as e:
@@ -268,7 +283,7 @@ async def compare_rag_types(question: str):
 
 @router.post("/chat/pedagogical", response_model=PedagogicalChatResponse)
 @log_interaction(EndpointType.PEDAGOGICAL)
-async def chat_pedagogical(request: ChatRequest):
+async def chat_pedagogical(http_request: Request, request: ChatRequest):
     """
     Process a question using Pedagogical RAG (Phase-based tutoring)
 
@@ -379,6 +394,9 @@ async def chat_pedagogical(request: ChatRequest):
             phase_history=updated_state.phase_history
         )
 
+        # Get interaction ID from analytics middleware
+        interaction_id = getattr(http_request.state, 'interaction_id', str(uuid.uuid4()))
+
         # Return pedagogical response
         return PedagogicalChatResponse(
             answer=result["generation"],
@@ -386,7 +404,8 @@ async def chat_pedagogical(request: ChatRequest):
             phase_summary=updated_state.get_phase_summary(),
             phase_history=updated_state.phase_history,
             problem_statement=updated_state.problem_statement,
-            question=request.message
+            question=request.message,
+            interaction_id=interaction_id
         )
 
     except Exception as e:
