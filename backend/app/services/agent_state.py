@@ -28,3 +28,5 @@ class AgentState(TypedDict):
     # Metadata
     relevance_decision: str | None         # "yes" or "no" from grading
     workflow_path: List[str]               # Visited nodes
+    document_metadata: List[dict]          # Document metadata (filenames, page numbers, etc.)
+    slm_prompt: str | None                 # The actual prompt sent to SLM (for analytics)

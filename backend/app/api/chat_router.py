@@ -16,6 +16,8 @@ from app.services.agentic_rag import get_agentic_rag_service
 from app.services.state_manager import state_manager
 from app.services.pedagogical_graph import pedagogical_graph
 from app.models.pedagogical_state import TutoringPhase
+from ..middleware.analytics_middleware import log_interaction
+from ..models.analytics import EndpointType
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +105,7 @@ class ChatResponse(BaseModel):
     }
 
 @router.post("/chat", response_model=ChatResponse)
+@log_interaction(EndpointType.SIMPLE)
 async def chat(request: ChatRequest):
     """
     Process a question using Simple RAG (Direct Retrieval)
@@ -194,6 +197,7 @@ class PedagogicalChatResponse(BaseModel):
     }
 
 @router.post("/chat-agentic", response_model=AgenticChatResponse)
+@log_interaction(EndpointType.AGENTIC)
 async def chat_agentic(request: ChatRequest):
     """
     Handle chat requests using Agentic RAG (self-correcting)
@@ -263,6 +267,7 @@ async def compare_rag_types(question: str):
 
 
 @router.post("/chat/pedagogical", response_model=PedagogicalChatResponse)
+@log_interaction(EndpointType.PEDAGOGICAL)
 async def chat_pedagogical(request: ChatRequest):
     """
     Process a question using Pedagogical RAG (Phase-based tutoring)

@@ -9,6 +9,8 @@ import logging
 from app.api.chat_router import router as chat_router
 from app.api.chat_ws import router as chat_ws_router
 from app.api.auth_router import router as auth_router
+from app.api.analytics_router import router as analytics_router
+from app.middleware.analytics_middleware import AnalyticsMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -37,10 +39,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add analytics middleware
+from app.core.config import settings
+if settings.analytics_enabled:
+    app.add_middleware(AnalyticsMiddleware)
+
 # Include routers
 app.include_router(chat_router)
 app.include_router(chat_ws_router)
 app.include_router(auth_router, prefix="/api", tags=["authentication"])
+app.include_router(analytics_router)
 
 @app.get("/")
 def health_check():
@@ -90,6 +98,18 @@ async def startup_event():
     logger.info("Listening on port 8000")
     logger.info("API docs available at http://localhost:8000/docs")
 
+    # Initialize analytics service
+    if settings.analytics_enabled:
+        try:
+            from app.services.analytics_service import analytics_service
+            logger.info("Initializing analytics service...")
+            await analytics_service.initialize()
+            logger.info("✓ Analytics service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize analytics service: {e}")
+            import traceback
+            traceback.print_exc()
+
     # Initialize RAG service
     try:
         from app.services.rag_service import rag_service
@@ -105,3 +125,12 @@ async def startup_event():
 async def shutdown_event():
     """Run on application shutdown"""
     logger.info("👋 AI Mentor API shutting down...")
+
+    # Shutdown analytics service
+    if settings.analytics_enabled:
+        try:
+            from app.services.analytics_service import analytics_service
+            await analytics_service.shutdown()
+            logger.info("✓ Analytics service shutdown complete")
+        except Exception as e:
+            logger.error(f"Failed to shutdown analytics service: {e}")

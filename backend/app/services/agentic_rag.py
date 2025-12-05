@@ -273,6 +273,9 @@ Instructions:
 Answer:"""
 
         try:
+            # CAPTURE: Store the actual prompt sent to SLM for analytics
+            state["slm_prompt"] = generation_prompt
+
             # Call LLM for generation (non-streaming)
             response = self.llm.complete(generation_prompt)
             state["generation"] = response.text.strip()
@@ -282,6 +285,8 @@ Answer:"""
         except Exception as e:
             logger.error(f"  Generation failed: {e}")
             state["generation"] = f"I apologize, but I encountered an error generating the answer: {str(e)}"
+            # Still capture the prompt even if generation failed
+            state["slm_prompt"] = generation_prompt
 
         return state
 
@@ -364,7 +369,8 @@ Answer:"""
                 "num_sources": len(final_state["documents"]),
                 "workflow_path": " → ".join(final_state["workflow_path"]),
                 "rewrites_used": final_state["retry_count"],
-                "was_rewritten": final_state["rewritten_question"] is not None
+                "was_rewritten": final_state["rewritten_question"] is not None,
+                "slm_prompt": final_state.get("slm_prompt", "")  # Include captured prompt for analytics
             }
 
             logger.info(f"\n{'='*60}")
@@ -462,6 +468,9 @@ Instructions:
 
 Answer:"""
 
+                # CAPTURE: Store the actual prompt sent to SLM for analytics
+                final_state["slm_prompt"] = generation_prompt
+
                 # Stream tokens from LLM
                 logger.info("  Streaming answer tokens from LLM...")
                 stream_response = self.llm.stream_complete(generation_prompt)
@@ -497,7 +506,8 @@ Answer:"""
                     "num_sources": len(final_state["documents"]),
                     "workflow_path": " → ".join(final_state["workflow_path"]),
                     "rewrites_used": final_state["retry_count"],
-                    "was_rewritten": final_state["rewritten_question"] is not None
+                    "was_rewritten": final_state["rewritten_question"] is not None,
+                    "slm_prompt": final_state.get("slm_prompt", "")  # Include captured prompt for analytics
                 }
 
             logger.info(f"\n{'='*60}")

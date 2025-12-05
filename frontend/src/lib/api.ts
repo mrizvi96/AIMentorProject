@@ -78,7 +78,8 @@ export async function sendMessageHTTP(userMessage: string) {
 			role: 'assistant',
 			content: data.answer || data.response, // Support both 'answer' and 'response' keys
 			timestamp: new Date(),
-			sources: data.sources || [] // Pass through detailed source objects
+			sources: data.sources || [], // Pass through detailed source objects
+			interactionId: data.interaction_id // Include interaction ID for feedback
 		};
 		messages.update(m => [...m, assistantMsg]);
 
@@ -180,11 +181,11 @@ export function sendMessageWebSocket(userMessage: string) {
 				// Pass through detailed source objects for SourceViewer
 				const sources = data.sources || [];
 
-				// Add sources to message
+				// Add sources and interaction ID to message
 				messages.update(msgs => {
 					return msgs.map(m =>
 						m.id === assistantMessageId
-							? { ...m, sources: sources }
+							? { ...m, sources: sources, interactionId: data.interaction_id }
 							: m
 					);
 				});
@@ -275,7 +276,7 @@ export async function sendMessagePedagogicalHTTP(userMessage: string) {
 			content: data.answer,
 			timestamp: new Date(),
 			sources: [], // Pedagogical mode focuses on guidance, not sources
-			workflow: data.phase_history ? data.phase_history.map(phase => ({
+			workflow: data.phase_history ? data.phase_history.map((phase: string) => ({
 				node: phase.toUpperCase(),
 				status: 'completed' as const,
 				timestamp: new Date()
@@ -283,7 +284,8 @@ export async function sendMessagePedagogicalHTTP(userMessage: string) {
 			// Add pedagogical metadata
 			pedagogicalPhase: data.current_phase,
 			phaseSummary: data.phase_summary,
-			problemStatement: data.problem_statement
+			problemStatement: data.problem_statement,
+			interactionId: data.interaction_id // Include interaction ID for feedback
 		};
 
 		messages.update(m => [...m, assistantMsg]);
@@ -419,11 +421,12 @@ export function sendMessagePedagogicalWebSocket(userMessage: string) {
 									pedagogicalPhase: data.current_phase,
 									phaseSummary: data.phase_summary,
 									problemStatement: data.problem_statement,
-									workflow: data.phase_history ? data.phase_history.map(phase => ({
+									workflow: data.phase_history ? data.phase_history.map((phase: string) => ({
 										node: phase.toUpperCase(),
 										status: 'completed' as const,
 										timestamp: new Date()
-									})) : (m.workflow || [])
+									})) : (m.workflow || []),
+									interactionId: data.interaction_id // Include interaction ID for feedback
 								}
 								: m
 					);

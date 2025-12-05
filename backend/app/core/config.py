@@ -49,6 +49,21 @@ class Settings(BaseSettings):
     session_secret_key: str = "dev-secret-key-change-in-production"
     session_expiry_seconds: int = 3600  # 1 hour
 
+    # Analytics Configuration
+    analytics_enabled: bool = True
+    analytics_db_path: str = str(Path(__file__).parent.parent.parent / "analytics.db")
+    analytics_retention_days: int = 90
+    analytics_batch_size: int = 50
+    analytics_flush_interval: int = 5  # seconds
+    analytics_max_queue_size: int = 1000
+
+    # Privacy Configuration
+    anonymize_user_data: bool = False
+    log_raw_queries: bool = True
+    log_ai_responses: bool = True
+    log_prompts: bool = True
+    require_consent_for_analytics: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

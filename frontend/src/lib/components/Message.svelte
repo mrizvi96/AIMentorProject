@@ -2,6 +2,7 @@
 	import type { Message } from '$lib/stores';
 	import WorkflowVisualization from './WorkflowVisualization.svelte';
 	import SourceViewer from './SourceViewer.svelte';
+	import FeedbackComponent from './FeedbackComponent.svelte';
 
 	export let message: Message;
 
@@ -11,6 +12,10 @@
 			minute: '2-digit',
 			hour12: true
 		});
+	}
+
+	function handleFeedback(rating: number, comment: string) {
+		console.log(`Feedback submitted for interaction ${message.interactionId}:`, rating, comment);
 	}
 </script>
 
@@ -39,6 +44,14 @@
 
 		{#if message.sources && message.sources.length > 0}
 			<SourceViewer sources={message.sources} />
+		{/if}
+
+		{#if message.role === 'assistant' && message.interactionId && message.content}
+			<FeedbackComponent
+				interactionId={message.interactionId}
+				onFeedback={handleFeedback}
+				compact={true}
+			/>
 		{/if}
 	</div>
 </div>

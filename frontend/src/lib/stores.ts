@@ -25,6 +25,8 @@ export interface Message {
 	pedagogicalPhase?: string;
 	phaseSummary?: string;
 	problemStatement?: string;
+	// Analytics metadata
+	interactionId?: string;
 }
 
 export interface WorkflowStep {
